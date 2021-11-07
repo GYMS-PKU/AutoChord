@@ -20,7 +20,8 @@ class DataLoader:
         if processed_data_path is None:
             processed_data_path = 'F:/Documents/学习资料/自动配和弦/datasets/processed_data'
         self.processed_data_path = processed_data_path
-        if os.path.isfile(self.processed_data_path):
+
+        if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
 
     def process_raw_data(self):  # 将已有数据处理成dic，dic['key']为调号，dic['melody']为旋律，dic['chord']为和弦，name为名字
