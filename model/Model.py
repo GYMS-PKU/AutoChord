@@ -12,6 +12,14 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.autograd import Variable
 
 
+class MyLoss(nn.Module):
+    def __init__(self):
+        super(MyLoss, self).__init__()
+
+    def forward(self, chord, predict_chord, mask):  # 计算被mask掉的地方的预测的分类损失
+        return torch.mean(-torch.log(chord * predict_chord))  # 需要改
+
+
 class AutoChordNet(nn.Module):
     def __init__(self, melody_keys=128, chord_num=96, hidden_size=128, num_layers=2, device='cpu'):
         super(AutoChordNet, self).__init__()
@@ -43,4 +51,10 @@ class AutoChordNet(nn.Module):
         y = y[:, -1, :]  # 取出最后一个时间步
         z = torch.cat([x, y], dim=-1)
         z = self.linear(z)
+        return z
+
+
+def trainer(epochs=1000):  # 训练函数，需要生成掩盖函数
+    pass
+
 
