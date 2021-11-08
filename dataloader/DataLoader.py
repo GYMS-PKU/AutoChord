@@ -24,11 +24,16 @@ class DataLoader:
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
 
-        if 'processed_data.pkl' is os.listdir(self.processed_data_path):
-            with open('{}/processed_data.pkl', 'rb') as f:
-                self.processed_data = pickle.load(f)
+        if 'train_data.pkl' in os.listdir(self.processed_data_path):
+            with open('{}/train_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                self.train_data = pickle.load(f)
         else:
             self.processed_data = None
+            if 'processed_data.pkl' in os.listdir(self.processed_data_path):
+                with open('{}/processed_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.processed_data = pickle.load(f)
+            else:
+                self.processed_data = None
 
     def process_raw_data(self):  # 将已有数据处理成dic，dic['key']为调号，dic['melody']为旋律，dic['chord']为和弦，name为名字
         processed_num = 0
@@ -61,12 +66,25 @@ class DataLoader:
             pickle.dump(lst, f)
         print('done.')
 
-    def get_train_date(self):  # 得到每个和弦对应的旋律音
+    def get_train_data(self):  # 得到每个和弦对应的旋律音
         if self.processed_data is None:
             print('no processed_data yet')
             return
-
-        dic = {}  # 类型和processed_data一致，但是每一个时间步都有和弦和一个旋律
+        n = 0
+        lst = []  # 类型和processed_data一致，但是每一个时间步都有和弦和一个旋律
+        for value in self.processed_data:
+            melody, chord = self.select_chord(value['melody'], value['chord'])
+            if melody is None:
+                continue
+            tmp_dic = {'key': value['key'], 'name': value['name'], 'melody': melody, 'chord': chord}
+            lst.append(tmp_dic)
+            n += 1
+            if n % 1000 == 0:
+                print('{} valid samples'.format(n))
+        print('total {} valid samples'.format(n))
+        with open('{}/train_data.pkl'.format(self.processed_data_path), 'wb') as f:
+            pickle.dump(lst, f)
+        self.train_data = lst
 
     @staticmethod
     def select_chord(melody, chord):  # 从一个melody和chord序列筛选出纯的旋律和和弦序列
@@ -75,28 +93,39 @@ class DataLoader:
         chord_sum_num = np.sum(chord, axis=1)
         melody_sum_num = np.sum(melody, axis=1)
         i = 0
+        still = False  # 标记是否是上一和弦的延续
         while i < len(melody):
             if chord_sum_num[i] > 0:
-                if melody_sum_num[i] > 0:
-                    chord_s.append(i)
-                    melody_s.append(i)
+                if len(chord_s) > 0:  # 如果已经有和弦
+                    if (np.sum(np.abs(chord[i] - chord[chord_s[-1]])) == 0) and still:  # 和目前正在延续的和弦相同，则跳过
+                        i += 1
+                        continue  # 跳过延续的和弦
+                if melody_sum_num[i] > 0:  # 此时有和弦且有旋律
+                    if len(chord_s) == 0:  # 这是第一个和弦，就直接放进去
+                        chord_s.append(i)
+                        melody_s.append(i)
+                        i += 1
+                        still = True  # 同时和弦开始延续
+                    else:  # 否则只有新和弦才能进入
+                        if np.sum(np.abs(chord[i] - chord[chord_s[-1]])) != 0:  # 如果和上一个和弦不相同就一定是新和弦
+                            chord_s.append(i)
+                            melody_s.append(i)
+                            i += 1
+                            still = True
+                        else:  # 否则需要判断当前是不是延续状态
+                            if not still:  # 虽然相同但不延续
+                                chord_s.append(i)
+                                melody_s.append(i)
+                                i += 1
+                                still = True
+                            else:  # 此时还在延续
+                                i += 1
+                else:
                     i += 1
-                else:  # 此时在有和弦的地方没有旋律音，需要向后找一个，找不到就退出
-                    i_0 = i  # 记录下离下一个旋律音最近的chord
-                    for j in range(i+1, len(melody)):
-                        if melody_sum_num[j] > 0:
-                            melody_s.append(j)
-                            chord_s.append(i_0)
-                            i = j+1  # 只要找到就退出
-                            break
-                        else:
-                            if chord_sum_num[j] > 0:
-                                i_0 = j  # 更新最近的和弦位置
-                    if (j == len(melody)-1) and (i < j):
-                        i = j+1
             else:
-                i += 1
+                i += 1  # 遇到空就一定结束和弦延续
+                still = False  # 延续的和弦结束了
         if len(chord_s) >= 2:
             return melody[melody_s], chord[chord_s]
         else:
-            return None
+            return None, None
