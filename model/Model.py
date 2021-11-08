@@ -21,21 +21,26 @@ class AutoChordNet(nn.Module):
         self.chord_num = chord_num  # chord_num是使用one_hot编码的和弦数量
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm_1 = nn.LSTM(input_size=self.melody_keys+self.chord_num,
+        self.lstm_1 = nn.LSTM(input_size=self.melody_keys+self.chord_num+1,  # 加上一个mask的维度
                               hidden_size=self.hidden_size,
                               num_layers=self.num_layers,
                               batch_first=True,
                               dropout=0.2,
                               bidirectional=True)
 
-        self.lstm_1 = nn.LSTM(input_size=self.hidden_size*2,
+        self.lstm_2 = nn.LSTM(input_size=self.hidden_size*2,
                               hidden_size=self.hidden_size,
                               num_layers=self.num_layers,
                               batch_first=True,
                               dropout=0.2,
                               bidirectional=True)
 
-        self.linear = nn.Linear(self.hidden_size * 2 + self.melody_keys + self.chord_num, self.chord_num)
+        self.linear = nn.Linear(self.hidden_size * 2 + self.melody_keys + self.chord_num + 1, self.chord_num)
 
-    def forward(self):
-        pass
+    def forward(self, x):  # 提前拼接好所需的东西
+        y, _ = self.lstm_1(x)
+        y, _ = self.lstm_2(y)
+        y = y[:, -1, :]  # 取出最后一个时间步
+        z = torch.cat([x, y], dim=-1)
+        z = self.linear(z)
+
