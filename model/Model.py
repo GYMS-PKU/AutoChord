@@ -2,6 +2,10 @@
 
 """
 该文档定义BiLSTM模型
+
+开发日志
+2021-11-10
+-- 定义模型
 """
 
 import torch
@@ -43,12 +47,13 @@ class AutoChordNet(nn.Module):
                               dropout=0.2,
                               bidirectional=True)
 
-        self.linear = nn.Linear(self.hidden_size * 2 + self.melody_keys + self.chord_num + 1, self.chord_num)
+        self.linear = nn.Linear(self.hidden_size * 2 * self.num_layers + self.melody_keys + self.chord_num + 1, self.chord_num)
 
     def forward(self, x):  # 提前拼接好所需的东西
-        y, _ = self.lstm_1(x)
-        y, _ = self.lstm_2(y)
-        y = y[:, -1, :]  # 取出最后一个时间步
+        y, (h_n, c_n) = self.lstm_1(x)
+        h_n = h_n.flatten(start_dim=1)
+        y, (h_n, c_n) = self.lstm_2(h_n)
+        y = h_n.flatten(start_dim=1)  # 取出最后一个时间步
         z = torch.cat([x, y], dim=-1)
         z = self.linear(z)
         return z
