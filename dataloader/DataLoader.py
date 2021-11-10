@@ -3,6 +3,14 @@
 """
 该文档主要定义读取midi数据，转为标准numpy格式并存储
 考虑先每一个样本存一个文件，然后所有样本统一存储为一个大文件，以加速读取
+
+开发日志
+2021-11-08
+-- 数据读取并存储为一个字典的方法，
+2021-11-09
+-- 压缩数据，只把有和弦的选出来
+2021-11-10
+-- 定义训练数据预处理方法，包括随机生成mask以及数据的拼接；需要解决不等长训练数据的问题
 """
 
 import numpy as np
@@ -10,6 +18,7 @@ import pickle
 import pypianoroll as pr
 import xml.etree.ElementTree as et
 import os
+import torch
 
 
 class DataLoader:
@@ -28,7 +37,13 @@ class DataLoader:
             with open('{}/train_data.pkl'.format(self.processed_data_path), 'rb') as f:
                 self.train_data = pickle.load(f)
         else:
-            self.processed_data = None
+            self.train_data = None
+        # 因为随机mask不一样，因此无论如何都要保存compressed_data，此后每调用一次get_train_data方法都重置train_data
+        if 'compressed_data.pkl' in os.listdir(self.processed_data_path):
+            with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                self.compressed_data = pickle.load(f)
+        else:
+            self.compressed_data = None
             if 'processed_data.pkl' in os.listdir(self.processed_data_path):
                 with open('{}/processed_data.pkl'.format(self.processed_data_path), 'rb') as f:
                     self.processed_data = pickle.load(f)
@@ -66,7 +81,7 @@ class DataLoader:
             pickle.dump(lst, f)
         print('done.')
 
-    def get_train_data(self):  # 得到每个和弦对应的旋律音
+    def compress_data(self):  # 压缩数据，得到每个和弦对应的旋律音
         if self.processed_data is None:
             print('no processed_data yet')
             return
@@ -82,9 +97,9 @@ class DataLoader:
             if n % 1000 == 0:
                 print('{} valid samples'.format(n))
         print('total {} valid samples'.format(n))
-        with open('{}/train_data.pkl'.format(self.processed_data_path), 'wb') as f:
+        with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'wb') as f:
             pickle.dump(lst, f)
-        self.train_data = lst
+        self.compressed_data = lst
 
     @staticmethod
     def select_chord(melody, chord):  # 从一个melody和chord序列筛选出纯的旋律和和弦序列
@@ -129,3 +144,20 @@ class DataLoader:
             return melody[melody_s], chord[chord_s]
         else:
             return None, None
+
+    def get_train_data(self):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
+        train_data = []
+        for c_data in self.compressed_data:  # 循环做mask并拼接后存入train_data
+            melody = c_data['melody'].copy()  # seq_length * key_num
+            chord = c_data['chord'].copy()  # seq_length * key_num
+            mask = np.random.randn(len(melody))
+            mask[mask > 0] = 1
+            mask[mask <= 0] = 0
+            while (np.sum(mask == 0) == 0) or (np.sum(mask == 1) <= 3):  # 不允许没有mask或者mask太多
+                mask = np.random.randn(len(melody))
+                mask[mask > 0] = 1
+                mask[mask <= 0] = 0
+            chord = (chord.T * mask).T
+            t_data = torch.tensor(np.hstack([melody, chord, mask.reshape(-1, 1)]))
+            train_data.append(t_data)
+        self.train_data = train_data
