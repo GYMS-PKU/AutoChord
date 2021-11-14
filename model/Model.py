@@ -51,8 +51,10 @@ class AutoChordNet(nn.Module):
 
     def forward(self, x):  # 提前拼接好所需的东西
         y, (h_n, c_n) = self.lstm_1(x)
+        h_n = h_n.transpose(1, 0)
         h_n = h_n.flatten(start_dim=1)
         y, (h_n, c_n) = self.lstm_2(h_n)
+        h_n = h_n.transpose(1, 0)
         y = h_n.flatten(start_dim=1)  # 取出最后一个时间步
         z = torch.cat([x, y], dim=-1)
         z = self.linear(z)
