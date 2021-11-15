@@ -13,6 +13,7 @@
 -- 定义训练数据预处理方法，包括随机生成mask以及数据的拼接；需要解决不等长训练数据的问题
 2021-11-15
 -- 新增训练设备识别
+-- 新增和弦识别，统计和弦总数，以及选择需要训练的和弦
 """
 
 import numpy as np
@@ -183,3 +184,5 @@ class DataLoader:
                 print('{} valid train_data'.format(n))
         print('total {} valid train_data'.format(n))
         self.train_data = train_data
+
+
