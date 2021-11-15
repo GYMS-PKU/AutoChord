@@ -38,6 +38,7 @@ class DataLoader:
             processed_data_path = 'F:/Documents/学习资料/自动配和弦/datasets/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
+        self.chord_dic = None
 
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
@@ -185,4 +186,26 @@ class DataLoader:
         print('total {} valid train_data'.format(n))
         self.train_data = train_data
 
+    def get_chord_dic(self):  # 扫描compressed_data的所有和弦并以元组的形式表示和弦，依次从最低音到最高音
+        if self.compressed_data is None:
+            print('no compressed_data yet!')
+        chord_dic = {}
+        n = 0
+        for data in self.compressed_data:
+            chord = data[1]  # 和弦
+            for c in chord:
+                lst = []
+                j = 0
+                while j < len(c):
+                    if c[j] > 0:
+                        lst.append(j % 12)
+                lst = tuple(lst)
+                try:
+                    chord_dic[lst]
+                except KeyError:
+                    chord_dic[lst] = n
+                    n += 1
+                    if n % 10 == 0:
+                        print('{} different chords found'.format(n))
+        self.chord_dic = chord_dic
 
