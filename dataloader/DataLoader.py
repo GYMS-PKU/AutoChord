@@ -11,6 +11,8 @@
 -- 压缩数据，只把有和弦的选出来
 2021-11-10
 -- 定义训练数据预处理方法，包括随机生成mask以及数据的拼接；需要解决不等长训练数据的问题
+2021-11-15
+-- 新增训练设备识别
 """
 
 import numpy as np
@@ -22,24 +24,32 @@ import torch
 
 
 class DataLoader:
-    def __init__(self, raw_data_path=None, processed_data_path=None):
+    def __init__(self, raw_data_path=None, processed_data_path=None, device='cpu'):
+        """
+        :param raw_data_path: 原始数据路径
+        :param processed_data_path: 已处理数据路径
+        :param device: 设备
+        """
         if raw_data_path is None:
             raw_data_path = 'F:/Documents/学习资料/自动配和弦/datasets'
         self.raw_data_path = raw_data_path
         if processed_data_path is None:
             processed_data_path = 'F:/Documents/学习资料/自动配和弦/datasets/processed_data'
         self.processed_data_path = processed_data_path
+        self.device = device
 
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
 
         if 'train_data.pkl' in os.listdir(self.processed_data_path):
+            print('reading train_data')
             with open('{}/train_data.pkl'.format(self.processed_data_path), 'rb') as f:
                 self.train_data = pickle.load(f)
         else:
             self.train_data = None
         # 因为随机mask不一样，因此无论如何都要保存compressed_data，此后每调用一次get_train_data方法都重置train_data
         if 'compressed_data.pkl' in os.listdir(self.processed_data_path):
+            print('reading compressed_data')
             with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
                 self.compressed_data = pickle.load(f)
         else:
@@ -147,6 +157,7 @@ class DataLoader:
 
     def get_train_data(self):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         train_data = []
+        n = 0
         for c_data in self.compressed_data:  # 循环做mask并拼接后存入train_data
             melody = c_data['melody'].copy()  # seq_length * key_num
             chord = c_data['chord'].copy()  # seq_length * key_num
@@ -158,6 +169,10 @@ class DataLoader:
                 mask[mask > 0] = 1
                 mask[mask <= 0] = 0
             chord = (chord.T * mask).T
-            t_data = torch.tensor(np.hstack([melody, chord, mask.reshape(-1, 1)]))
+            t_data = torch.tensor(np.hstack([melody, chord, mask.reshape(-1, 1)])).to(self.device)
             train_data.append(t_data)
+            n += 1
+            if n % 1000 == 0:
+                print('{} valid train_data'.format(n))
+        print('{} valid train_data'.format(n))
         self.train_data = train_data
