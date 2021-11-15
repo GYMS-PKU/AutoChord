@@ -155,24 +155,31 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
+    def get_train_data(self, length=8):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
+        """
+        :param length: 和弦最小长度
+        :return:
+        """
         train_data = []
         n = 0
         for c_data in self.compressed_data:  # 循环做mask并拼接后存入train_data
             melody = c_data['melody'].copy()  # seq_length * key_num
             chord = c_data['chord'].copy()  # seq_length * key_num
+            if len(melody) < length:
+                continue
             mask = np.random.randn(len(melody))
             mask[mask > 0] = 1
             mask[mask <= 0] = 0
-            while (np.sum(mask == 0) == 0) or (np.sum(mask == 1) <= 3):  # 不允许没有mask或者mask太多
+            while (np.sum(mask == 0) == 0) or (np.sum(mask == 1) <= 2):  # 不允许没有mask或者mask太多
                 mask = np.random.randn(len(melody))
                 mask[mask > 0] = 1
                 mask[mask <= 0] = 0
             chord = (chord.T * mask).T
             t_data = torch.tensor(np.hstack([melody, chord, mask.reshape(-1, 1)])).to(self.device)
-            train_data.append(t_data)
+            y_data = torch.tensor(chord).to(self.device)
+            train_data.append((t_data, y_data))
             n += 1
             if n % 1000 == 0:
                 print('{} valid train_data'.format(n))
-        print('{} valid train_data'.format(n))
+        print('total {} valid train_data'.format(n))
         self.train_data = train_data
