@@ -22,6 +22,7 @@ import pypianoroll as pr
 import xml.etree.ElementTree as et
 import os
 import torch
+from time import time
 
 
 class DataLoader:
@@ -38,7 +39,6 @@ class DataLoader:
             processed_data_path = 'F:/Documents/学习资料/自动配和弦/datasets/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
-        self.chord_dic = None
 
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
@@ -49,6 +49,16 @@ class DataLoader:
                 self.train_data = pickle.load(f)
         else:
             self.train_data = None
+        if 'chord_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading chord_dic')
+            try:
+                with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.chord_dic = pickle.load(f)
+            except EOFError:
+                print('error')
+                self.chord_dic = None
+        else:
+            self.chord_dic = None
         # 因为随机mask不一样，因此无论如何都要保存compressed_data，此后每调用一次get_train_data方法都重置train_data
         if 'compressed_data.pkl' in os.listdir(self.processed_data_path):
             print('reading compressed_data')
@@ -157,9 +167,10 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self, length=8):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
+    def get_train_data(self, length=8, write_cache=False):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
         :param length: 和弦最小长度
+        :param write_cache: 是否写缓存
         :return:
         """
         train_data = []
@@ -184,14 +195,19 @@ class DataLoader:
             if n % 1000 == 0:
                 print('{} valid train_data'.format(n))
         print('total {} valid train_data'.format(n))
+        if write_cache:
+            with open('{}/train_data.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(train_data, f)
         self.train_data = train_data
 
     def get_chord_dic(self):  # 扫描compressed_data的所有和弦并以元组的形式表示和弦，依次从最低音到最高音
-        if self.compressed_data is None:
+        if self.train_data is None:
             print('no compressed_data yet!')
         chord_dic = {}
         n = 0
-        for data in self.compressed_data:
+        count = 0
+        t = time()
+        for data in self.train_data:
             chord = data[1]  # 和弦
             for c in chord:
                 lst = []
@@ -199,6 +215,7 @@ class DataLoader:
                 while j < len(c):
                     if c[j] > 0:
                         lst.append(j % 12)
+                    j += 1
                 lst = tuple(lst)
                 try:
                     chord_dic[lst]
@@ -207,5 +224,11 @@ class DataLoader:
                     n += 1
                     if n % 10 == 0:
                         print('{} different chords found'.format(n))
+            count += 1
+            if count % 1000 == 0:
+                print('{} data scanned'.format(count))
+                print('time used: {:.4f}s'.format(time()-t))
         self.chord_dic = chord_dic
+        with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+            pickle.dump(chord_dic, f)
 
