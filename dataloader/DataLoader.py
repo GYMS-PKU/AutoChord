@@ -33,15 +33,15 @@ class DataLoader:
         :param device: 设备
         """
         if raw_data_path is None:
-            raw_data_path = 'F:/Documents/学习资料/自动配和弦/datasets'
+            raw_data_path = 'E:/Documents/学习资料/AutoChord/datasets'
         self.raw_data_path = raw_data_path
         if processed_data_path is None:
-            processed_data_path = 'F:/Documents/学习资料/自动配和弦/datasets/processed_data'
+            processed_data_path = 'E:/Documents/学习资料/AutoChord/datasets/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
 
         if 'processed_data' not in os.listdir(self.raw_data_path):
-            os.makedirs('F:/Documents/学习资料/自动配和弦/datasets/processed_data')
+            os.makedirs('E:/Documents/学习资料/AutoChord/datasets/processed_data')
 
         if 'train_data.pkl' in os.listdir(self.processed_data_path):
             print('reading train_data')
