@@ -136,4 +136,7 @@ class Rule:
             c_1 = [i for i in chord_1] + [key_1]
             c_2 = [i for i in chord_2] + [key_2]
             for j in range(1, len(c_1)):
-                
+                pass
+            return True
+
+        self.rules['direction'] = direction
