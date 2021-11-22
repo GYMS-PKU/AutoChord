@@ -35,8 +35,12 @@ class ChordGenerator:
             t = 0
             chords = np.zeros(tt)  # 和弦
             key_frame = []  # 关键帧，用于记录冲突
-            key_frame_feasible_chords = []  # 记录关键帧的可行集
+            # key_frame_feasible_chords = []  # 记录关键帧的可行集
+            feasible_chords_record = []  # 记录可行集，如果回溯，则需要剔除
             while t < tt:
+                if len(feasible_chords_record) == t + 1:  # 此时说明是回溯回来的，此时不需要重复计算可行和弦
+                    feasible_chords = feasible_chords_record[-1].copy()  # 直接从这里生成下一个和弦
+
                 key = melody[t]  # 当前旋律音
                 feasible_chords = []  # 生成可行集，注意可行集用Rule中定义的方法判别
 
@@ -50,6 +54,14 @@ class ChordGenerator:
                         if self.rule.check_rules(chords[t-1], tmp_chord):  # 自定义的规则都检查通过后才能进入可行集
                             feasible_chords.append(i)
 
-                if not feasible_chords:  # 如果没有可行的和弦
-                    if not key_frame:
-                        key_frame.append(t-1)  # 上一时刻称为关键帧
+                if not feasible_chords:  # 如果没有可行的和弦，就依次往前回溯。注意此时feasible_chords_record的长度
+                    t -= 1
+                    while len(feasible_chords_record[t]) == 1:  # 表明上一步只有一个可行集，则需要进一步回溯
+                        feasible_chords_record.pop()  # 弹出最后一个
+                        if t == 0:  # 最后一个也弹出了
+                            print('No chords can satisfy rules! Please check your melody or the rules set.')
+                        t -= 1
+
+                t += 1
+
+
