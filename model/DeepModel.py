@@ -6,6 +6,8 @@
 开发日志
 2021-11-10
 -- 定义模型
+2021-11-23
+-- 定义Loss，更改模型结构为给定已有melody和chord预测下一个chord
 """
 
 import torch
@@ -21,15 +23,16 @@ class MyLoss(nn.Module):
         super(MyLoss, self).__init__()
 
     def forward(self, chord, predict_chord, mask):  # 计算被mask掉的地方的预测的分类损失
+        loss = orch.mean(-torch.log(chord * predict_chord))
         return torch.mean(-torch.log(chord * predict_chord))  # 需要改
 
 
 class AutoChordNet(nn.Module):
-    def __init__(self, melody_keys=128, chord_num=96, hidden_size=128, num_layers=2, device='cpu'):
+    def __init__(self, melody_keys=12, chord_num=96, hidden_size=128, num_layers=2, device='cpu'):
         super(AutoChordNet, self).__init__()
 
         self.device = device
-        self.melody_keys = melody_keys  # melody_keys设置为128，也就是128个维度来表征一个曲子；实际上可以缩减为12或者24之类的以降维
+        self.melody_keys = melody_keys  # melody_keys设置为12，也就是12个维度来表征一个曲子
         self.chord_num = chord_num  # chord_num是使用one_hot编码的和弦数量
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -47,7 +50,8 @@ class AutoChordNet(nn.Module):
                               dropout=0.2,
                               bidirectional=True)
 
-        self.linear = nn.Linear(self.hidden_size * 2 * self.num_layers + self.melody_keys + self.chord_num + 1, self.chord_num)
+        self.linear = nn.Linear(self.hidden_size * 2 * self.num_layers + self.melody_keys + self.chord_num + 1,
+                                self.chord_num)
 
     def forward(self, x):  # 提前拼接好所需的东西
         y, (h_n, c_n) = self.lstm_1(x)

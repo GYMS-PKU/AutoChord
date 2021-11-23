@@ -16,6 +16,7 @@
 -- 新增和弦识别，统计和弦总数，以及选择需要训练的和弦
 2021-11-23
 -- 新增构造按照多级和弦的大小调位置，然后统计和弦个数
+-- 生成训练集时和弦转为tuple格式
 """
 
 import numpy as np
@@ -61,18 +62,24 @@ class DataLoader:
                 self.chord_dic = None
         else:
             self.chord_dic = None
-        # 因为随机mask不一样，因此无论如何都要保存compressed_data，此后每调用一次get_train_data方法都重置train_data
-        if 'compressed_data.pkl' in os.listdir(self.processed_data_path):
-            print('reading compressed_data')
-            with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
-                self.compressed_data = pickle.load(f)
+
+        if 'double_compressed_data.pkl' in os.listdir(self.processed_data_path):
+            print('reading double_compressed_data')
+            with open('{}/double_compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                self.double_compressed_data = pickle.load(f)
         else:
-            self.compressed_data = None
-            if 'processed_data.pkl' in os.listdir(self.processed_data_path):
-                with open('{}/processed_data.pkl'.format(self.processed_data_path), 'rb') as f:
-                    self.processed_data = pickle.load(f)
+            # 因为随机mask不一样，因此无论如何都要保存compressed_data，此后每调用一次get_train_data方法都重置train_data
+            if 'compressed_data.pkl' in os.listdir(self.processed_data_path):
+                print('reading compressed_data')
+                with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.compressed_data = pickle.load(f)
             else:
-                self.processed_data = None
+                self.compressed_data = None
+                if 'processed_data.pkl' in os.listdir(self.processed_data_path):
+                    with open('{}/processed_data.pkl'.format(self.processed_data_path), 'rb') as f:
+                        self.processed_data = pickle.load(f)
+                else:
+                    self.processed_data = None
 
         self.structure_chord_dic = None  # 结构化和弦，包含三和弦、七和弦、九和弦
         self.get_structure_chord_dic()
@@ -127,6 +134,31 @@ class DataLoader:
         with open('{}/compressed_data.pkl'.format(self.processed_data_path), 'wb') as f:
             pickle.dump(lst, f)
         self.compressed_data = lst
+
+    def double_compress_data(self):  # 二次压缩数据，旋律成为一个范围在0-11的向量，和弦是tuple的列表
+        if self.compressed_data is None:
+            print('no compressed_data yet')
+            return
+        n = 0
+        lst = []
+        for value in self.compressed_data:
+            melody = np.argmax(value['melody'], axis=1) % 12  # 旋律
+            chord = []
+            for i in value['chord']:
+                tmp = []
+                for j in range(len(i)):
+                    if i[j] > 0:
+                        tmp.append(j % 12)
+                chord.append(tuple(tmp))
+            tmp_dic = {'key': value['key'], 'name': value['name'], 'melody': melody, 'chord': chord}
+            lst.append(tmp_dic)
+            n += 1
+            if n % 1000 == 0:
+                print('{} valid samples'.format(n))
+        print('total {} valid samples'.format(n))
+        with open('{}/double_compressed_data.pkl'.format(self.processed_data_path), 'wb') as f:
+            pickle.dump(lst, f)
+        self.double_compressed_data = lst
 
     @staticmethod
     def select_chord(melody, chord):  # 从一个melody和chord序列筛选出纯的旋律和和弦序列
@@ -232,7 +264,7 @@ class DataLoader:
             count += 1
             if count % 1000 == 0:
                 print('{} data scanned'.format(count))
-                print('time used: {:.4f}s'.format(time()-t))
+                print('time used: {:.4f}s'.format(time() - t))
         self.chord_dic = chord_dic
         with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
             pickle.dump(chord_dic, f)
@@ -299,5 +331,3 @@ class DataLoader:
         structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
         """
         self.structure_chord_dic = structure_chord_dic
-
-
