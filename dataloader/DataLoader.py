@@ -14,6 +14,8 @@
 2021-11-15
 -- 新增训练设备识别
 -- 新增和弦识别，统计和弦总数，以及选择需要训练的和弦
+2021-11-23
+-- 新增构造按照多级和弦的大小调位置，然后统计和弦个数
 """
 
 import numpy as np
@@ -71,6 +73,9 @@ class DataLoader:
                     self.processed_data = pickle.load(f)
             else:
                 self.processed_data = None
+
+        self.structure_chord_dic = None  # 结构化和弦，包含三和弦、七和弦、九和弦
+        self.get_structure_chord_dic()
 
     def process_raw_data(self):  # 将已有数据处理成dic，dic['key']为调号，dic['melody']为旋律，dic['chord']为和弦，name为名字
         processed_num = 0
@@ -231,4 +236,68 @@ class DataLoader:
         self.chord_dic = chord_dic
         with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
             pickle.dump(chord_dic, f)
+
+    def get_structure_chord_dic(self):  # 直接自定义结构化的和弦字典，以和弦级别为初始的检索chord
+        structure_chord_dic = {'triad': {'major': {}, 'minor': {}}, 'seventh': {'major': {}, 'minor': {}},
+                               'ninth': {'major': {}, 'minor': {}}}  # 三和弦、七和弦、九和弦
+
+        # 三和弦
+        major_structure_chord_dic = {i: {} for i in range(1, 8)}  # 大调
+        minor_structure_chord_dic = {i: {} for i in range(1, 8)}  # 小调
+
+        major_structure_chord_dic[1] = {1: (0, 4, 7), 2: (4, 7, 0), 3: (7, 0, 4)}
+        minor_structure_chord_dic[1] = {1: (0, 3, 7), 2: (3, 7, 0), 3: (7, 0, 3)}
+
+        major_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
+        minor_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
+
+        major_structure_chord_dic[3] = {1: (4, 7, 11), 2: (7, 11, 4), 3: (11, 4, 7)}
+        minor_structure_chord_dic[3] = {1: (3, 7, 10), 2: (7, 10, 3), 3: (10, 3, 7)}
+
+        major_structure_chord_dic[4] = {1: (5, 9, 0), 2: (9, 0, 5), 3: (0, 5, 9)}
+        minor_structure_chord_dic[4] = {1: (5, 8, 0), 2: (8, 0, 5), 3: (0, 5, 8)}
+
+        major_structure_chord_dic[5] = {1: (7, 11, 2), 2: (11, 2, 7), 3: (2, 7, 11)}
+        minor_structure_chord_dic[5] = {1: (7, 10, 2), 2: (10, 2, 7), 3: (2, 7, 10)}
+
+        major_structure_chord_dic[6] = {1: (9, 0, 4), 2: (0, 4, 9), 3: (4, 9, 0)}
+        minor_structure_chord_dic[6] = {1: (8, 0, 3), 2: (0, 3, 8), 3: (3, 8, 0)}
+
+        major_structure_chord_dic[7] = {1: (11, 2, 5), 2: (2, 5, 11), 3: (5, 11, 2)}
+        minor_structure_chord_dic[7] = {1: (10, 2, 5), 2: (2, 5, 10), 3: (5, 10, 2)}
+
+        structure_chord_dic['triad']['major'] = major_structure_chord_dic
+        structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
+
+        # 七和弦
+        """
+        major_structure_chord_dic = {i: {} for i in range(1, 8)}  # 大调
+        minor_structure_chord_dic = {i: {} for i in range(1, 8)}  # 小调
+
+        major_structure_chord_dic[1] = {1: (0, 4, 7), 2: (4, 7, 0), 3: (7, 0, 4)}
+        minor_structure_chord_dic[1] = {1: (0, 3, 7), 2: (3, 7, 0), 3: (7, 0, 3)}
+
+        major_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
+        minor_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
+
+        major_structure_chord_dic[3] = {1: (4, 7, 11), 2: (7, 11, 4), 3: (11, 4, 7)}
+        minor_structure_chord_dic[3] = {1: (3, 7, 10), 2: (7, 10, 3), 3: (10, 3, 7)}
+
+        major_structure_chord_dic[4] = {1: (5, 9, 0), 2: (9, 0, 5), 3: (0, 5, 9)}
+        minor_structure_chord_dic[4] = {1: (5, 8, 0), 2: (8, 0, 5), 3: (0, 5, 8)}
+
+        major_structure_chord_dic[5] = {1: (7, 11, 2), 2: (11, 2, 7), 3: (2, 7, 11)}
+        minor_structure_chord_dic[5] = {1: (7, 10, 2), 2: (10, 2, 7), 3: (2, 7, 10)}
+
+        major_structure_chord_dic[6] = {1: (9, 0, 4), 2: (0, 4, 9), 3: (4, 9, 0)}
+        minor_structure_chord_dic[6] = {1: (8, 0, 3), 2: (0, 3, 8), 3: (3, 8, 0)}
+
+        major_structure_chord_dic[7] = {1: (11, 2, 5), 2: (2, 5, 11), 3: (5, 11, 2)}
+        minor_structure_chord_dic[7] = {1: (10, 2, 5), 2: (2, 5, 10), 3: (5, 10, 2)}
+
+        structure_chord_dic['triad']['major'] = major_structure_chord_dic
+        structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
+        """
+        self.structure_chord_dic = structure_chord_dic
+
 

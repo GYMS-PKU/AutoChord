@@ -7,6 +7,8 @@
 开发日志
 2021-11-21
 -- 初始化
+2021-11-23
+-- 新增根据全局转移矩阵的选取方法
 """
 
 
@@ -17,20 +19,22 @@ from Rule import Rule
 
 
 class ChordGenerator:
-    def __init__(self, chord_dic):
+    def __init__(self, chord_dic, global_transition_matrix=None):
         """
         :param chord_dic: 和弦字典，形式为int->tuple，例如1->(0, 4, 7)表示C大调的原位主和弦
+        :param global_transition_matrix: 全局转移矩阵
         """
         self.chord_dic = chord_dic
-        self.rule = Rule  # 判定规则，用于判断和弦进行是否合法
+        self.global_transition_matrix = global_transition_matrix
+        self.rule = Rule()  # 判定规则，用于判断和弦进行是否合法
 
     def generate(self, melody, method='back'):  # 给定旋律生成chord
         """
         :param melody: 旋律，array，目前限定成模12，也就是0到11之间，不管八度
-        :param method: 生成方法，默认是回溯，可选markov，lstm
+        :param method: 生成方法，默认是回溯，可选global_markov，lstm
         :return: 返回根据和弦字典的编号序列
         """
-        if method == 'back':
+        if method in ['back', 'global_markov']:
             tt = len(melody)
             t = 0
             chords = np.zeros(tt)  # 生成的和弦序列，注意这里使用的是和弦编号，最后可以用chord_dic转为tuple

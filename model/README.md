@@ -1,3 +1,8 @@
 # README
 
-该文件夹下的DeepModel下定义了深度模型，ChordGenerator文件下定义了不同的方法生成和弦序列。
+该文件夹下的DeepModel下定义了深度模型。
+
+
+
+#### 开发日志
+
