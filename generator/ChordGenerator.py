@@ -9,8 +9,8 @@
 -- 初始化
 2021-11-23
 -- 新增根据全局转移矩阵的选取方法
+-- 新增根据lstm的block sampler的生成方法
 """
-
 
 import numpy as np
 import sys
@@ -34,17 +34,28 @@ class ChordGenerator:
         :param method: 生成方法，默认是回溯，可选global_markov，lstm
         :return: 返回根据和弦字典的编号序列
         """
+        tt = len(melody)
+        chords = np.zeros(tt)  # 生成的和弦序列，注意这里使用的是和弦编号，最后可以用chord_dic转为tuple
+        chords[:] = np.nan  # 先填充缺失值
+
+        if method in ['lstm']:  # 使用lstm生成采样
+            return chords
+
         if method in ['back', 'global_markov']:
-            tt = len(melody)
             t = 0
-            chords = np.zeros(tt)  # 生成的和弦序列，注意这里使用的是和弦编号，最后可以用chord_dic转为tuple
-            chords[:] = np.nan  # 先填充缺失值
             # key_frame = []  # 关键帧，用于记录冲突
             # key_frame_feasible_chords = []  # 记录关键帧的可行集
             feasible_chords_record = []  # 记录可行集，如果回溯，则需要剔除
             while t < tt:
                 if len(feasible_chords_record) == t + 1:  # 此时说明是回溯回来的，此时不需要重复计算可行和弦
-                    tmp_chord = np.random.choice(feasible_chords_record[-1])[0]  # 直接从这里随机生成下一个和弦
+                    if method == 'back' or t == 0:  # 随机采样
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])  # 直接从这里随机生成下一个和弦
+                    elif method == 'global_markov':  # 全局马尔可夫采样
+                        p = self.global_transition_matrix[chords[t-1]][feasible_chords_record[-1]].copy()
+                        p /= np.sum(p)  # 局部转移概率
+                        tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
+                    else:
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])
                     chords[t] = tmp_chord
                     t += 1
                     continue
@@ -74,13 +85,27 @@ class ChordGenerator:
                         t -= 1
                     # 现在t的位置是引发矛盾的和弦
                     feasible_chords_record[t].remove(chords[t])  # 可行集删除引发矛盾的和弦
-                    tmp_chord = np.random.choice(feasible_chords_record[-1])[0]  # 直接从这里随机生成下一个和弦
+                    if method == 'back' or t == 0:  # 随机采样
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])  # 直接从这里随机生成下一个和弦
+                    elif method == 'global_markov':  # 全局马尔可夫采样
+                        p = self.global_transition_matrix[chords[t - 1]][feasible_chords_record[-1]].copy()
+                        p /= np.sum(p)  # 局部转移概率
+                        tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
+                    else:
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])
                     chords[t] = tmp_chord
                     t += 1
                     continue
                 else:
                     feasible_chords_record.append(feasible_chords)  # 可行集记录添加
-                    tmp_chord = np.random.choice(feasible_chords_record[-1])[0]  # 直接从这里随机生成下一个和弦
+                    if method == 'back' or t == 0:  # 随机采样
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])  # 直接从这里随机生成下一个和弦
+                    elif method == 'global_markov':  # 全局马尔可夫采样
+                        p = self.global_transition_matrix[chords[t - 1]][feasible_chords_record[-1]].copy()
+                        p /= np.sum(p)  # 局部转移概率
+                        tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
+                    else:
+                        tmp_chord = np.random.choice(feasible_chords_record[-1])
                     chords[t] = tmp_chord
                     t += 1
                     continue
