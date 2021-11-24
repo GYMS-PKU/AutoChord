@@ -17,6 +17,9 @@
 2021-11-23
 -- 新增构造按照多级和弦的大小调位置，然后统计和弦个数
 -- 生成训练集时和弦转为tuple格式
+2021-11-24
+-- 新增时序训练集的构造方法，从double_compressed_data中构造
+-- 更新：chord_dic改为chord_num_dic和num_chord_dic，整合在get_structure_chord_dic中
 """
 
 import numpy as np
@@ -52,17 +55,30 @@ class DataLoader:
                 self.train_data = pickle.load(f)
         else:
             self.train_data = None
-        if 'chord_dic.pkl' in os.listdir(self.processed_data_path):
-            print('reading chord_dic')
-            try:
-                with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'rb') as f:
-                    self.chord_dic = pickle.load(f)
-            except EOFError:
-                print('error')
-                self.chord_dic = None
-        else:
-            self.chord_dic = None
 
+        # 读取chord_num_dic和num_chord_dic，注意这里是tuple表示
+        if 'chord_num_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading chord_num_dic')
+            try:
+                with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.chord_num_dic = pickle.load(f)
+            except EOFError:
+                print('chord_num_dic not found!')
+                self.chord_num_dic = None
+        else:
+            self.chord_num_dic = None
+        if 'num_chord_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading num_chord_dic')
+            try:
+                with open('{}/num_chord_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.num_chord_dic = pickle.load(f)
+            except EOFError:
+                print('num_chord_dic not found!')
+                self.num_chord_dic = None
+        else:
+            self.num_chord_dic = None
+
+        # 读取二次压缩数据，其中和弦用tuple表示
         if 'double_compressed_data.pkl' in os.listdir(self.processed_data_path):
             print('reading double_compressed_data')
             with open('{}/double_compressed_data.pkl'.format(self.processed_data_path), 'rb') as f:
@@ -331,3 +347,19 @@ class DataLoader:
         structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
         """
         self.structure_chord_dic = structure_chord_dic
+        if (self.chord_num_dic is None) or (self.num_chord_dic is None):
+            num_chord_dic = {}
+            chord_num_dic = {}
+            num = 0
+            for chord_type in structure_chord_dic.keys():
+                for tonic_type in structure_chord_dic[chord_type]:
+                    for chord in structure_chord_dic[chord_type][tonic_type]:
+                        chord_num_dic[chord] = num
+                        num_chord_dic[num] = chord
+                        num += 1
+            self.num_chord_dic = num_chord_dic
+            self.chord_num_dic = chord_num_dic
+            with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(chord_num_dic, f)
+            with open('{}/num_chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(num_chord_dic, f)
