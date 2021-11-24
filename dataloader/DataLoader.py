@@ -20,6 +20,8 @@
 2021-11-24
 -- 新增时序训练集的构造方法，从double_compressed_data中构造
 -- 更新：chord_dic改为chord_num_dic和num_chord_dic，整合在get_structure_chord_dic中
+-- 更新：get_train_data方法更改，默认生成为单向lstm准备的训练数据，使用valid_double_compressed_data，形式为tuple
+-- 更新：新增valid_double_compressed_data，需要筛选出structure_chord_dic中收录的部分
 """
 
 import numpy as np
@@ -99,6 +101,8 @@ class DataLoader:
 
         self.structure_chord_dic = None  # 结构化和弦，包含三和弦、七和弦、九和弦
         self.get_structure_chord_dic()
+
+        self.valid_compressed_data = None
 
     def process_raw_data(self):  # 将已有数据处理成dic，dic['key']为调号，dic['melody']为旋律，dic['chord']为和弦，name为名字
         processed_num = 0
@@ -220,30 +224,34 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self, length=8, write_cache=False):  # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
+    def get_train_data(self, min_length=1, write_cache=False):
+        # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
-        :param length: 和弦最小长度
+        :param min_length: 最小训练长度，1意味着最短的形式是一个和弦，加两个melody，预测一个chord
         :param write_cache: 是否写缓存
         :return:
         """
         train_data = []
         n = 0
-        for c_data in self.compressed_data:  # 循环做mask并拼接后存入train_data
-            melody = c_data['melody'].copy()  # seq_length * key_num
-            chord = c_data['chord'].copy()  # seq_length * key_num
-            if len(melody) < length:
+        if self.valid_compressed_data is None:
+            print('no valid_compressed_data yet.')
+
+        for c_data in self.valid_compressed_data:  # 循环做出dataset，以(chord, melody, key, true_chord)形式存储
+            melody = c_data['melody'].copy()  # np.array(int)
+            chord = c_data['chord'].copy()  # [tuple]
+
+            if len(melody) <= min_length:
                 continue
-            mask = np.random.randn(len(melody))
-            mask[mask > 0] = 1
-            mask[mask <= 0] = 0
-            while (np.sum(mask == 0) == 0) or (np.sum(mask == 1) <= 2):  # 不允许没有mask或者mask太多
-                mask = np.random.randn(len(melody))
-                mask[mask > 0] = 1
-                mask[mask <= 0] = 0
-            chord = (chord.T * mask).T
-            t_data = torch.tensor(np.hstack([melody, chord, mask.reshape(-1, 1)])).to(self.device)
-            y_data = torch.tensor(chord).to(self.device)
-            train_data.append((t_data, y_data))
+
+            melody_mat = np.zeros((len(melody), 12))
+            chord_mat = np.zeros((len(chord), len(self.chord_num_dic)))
+            for i in range(len(melody)):  # 生成one_hot矩阵
+                melody_mat[i, melody[i]] = 1
+                chord_mat[i][self.chord_num_dic[chord[i]]] = 1
+            melody_mat = torch.Tensor(melody_mat)
+            chord_mat = torch.Tensor(chord_mat)
+            for j in range(min_length, len(melody)-1):
+                train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1], chord_mat[j+1]))
             n += 1
             if n % 1000 == 0:
                 print('{} valid train_data'.format(n))
@@ -253,6 +261,7 @@ class DataLoader:
                 pickle.dump(train_data, f)
         self.train_data = train_data
 
+    """
     def get_chord_dic(self):  # 扫描compressed_data的所有和弦并以元组的形式表示和弦，依次从最低音到最高音
         if self.train_data is None:
             print('no compressed_data yet!')
@@ -284,6 +293,7 @@ class DataLoader:
         self.chord_dic = chord_dic
         with open('{}/chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
             pickle.dump(chord_dic, f)
+    """
 
     def get_structure_chord_dic(self):  # 直接自定义结构化的和弦字典，以和弦级别为初始的检索chord
         structure_chord_dic = {'triad': {'major': {}, 'minor': {}}, 'seventh': {'major': {}, 'minor': {}},
