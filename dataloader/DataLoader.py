@@ -255,9 +255,10 @@ class DataLoader:
             melody_mat = torch.Tensor(melody_mat)
             chord_mat = torch.Tensor(chord_mat)
             for j in range(min_length, len(melody)-1):
-                train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1], chord_mat[j+1]))
+                train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1],
+                                   torch.tensor(self.chord_num_dic[chord[j+1]])))
                 n += 1
-                if n % 1000 == 0:
+                if n % 10000 == 0:
                     print('{} valid train_data'.format(n))
         print('total {} valid train_data'.format(n))
         if write_cache:
