@@ -51,6 +51,7 @@ class DataLoader:
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('E:/Documents/学习资料/AutoChord/datasets/processed_data')
 
+        # 读取缓存训练数据
         if 'train_data.pkl' in os.listdir(self.processed_data_path):
             print('reading train_data')
             with open('{}/train_data.pkl'.format(self.processed_data_path), 'rb') as f:
@@ -224,19 +225,22 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self, min_length=1, write_cache=False):
+    def get_train_data(self, min_length=1, write_cache=False, valid_compressed_data=None):
         # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
         :param min_length: 最小训练长度，1意味着最短的形式是一个和弦，加两个melody，预测一个chord
         :param write_cache: 是否写缓存
+        :param valid_compressed_data: 传入保证是三和弦的sample
         :return:
         """
         train_data = []
         n = 0
-        if self.valid_compressed_data is None:
+        if valid_compressed_data is None:
+            valid_compressed_data = self.valid_compressed_data
+        if valid_compressed_data is None:
             print('no valid_compressed_data yet.')
 
-        for c_data in self.valid_compressed_data:  # 循环做出dataset，以(chord, melody, key, true_chord)形式存储
+        for c_data in valid_compressed_data:  # 循环做出dataset，以(chord, melody, key, true_chord)形式存储
             melody = c_data['melody'].copy()  # np.array(int)
             chord = c_data['chord'].copy()  # [tuple]
 
@@ -252,9 +256,9 @@ class DataLoader:
             chord_mat = torch.Tensor(chord_mat)
             for j in range(min_length, len(melody)-1):
                 train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1], chord_mat[j+1]))
-            n += 1
-            if n % 1000 == 0:
-                print('{} valid train_data'.format(n))
+                n += 1
+                if n % 1000 == 0:
+                    print('{} valid train_data'.format(n))
         print('total {} valid train_data'.format(n))
         if write_cache:
             with open('{}/train_data.pkl'.format(self.processed_data_path), 'wb') as f:
@@ -356,17 +360,23 @@ class DataLoader:
         structure_chord_dic['triad']['major'] = major_structure_chord_dic
         structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
         """
+
+        # 生成chord_num_dic和num_chord_dic
         self.structure_chord_dic = structure_chord_dic
         if (self.chord_num_dic is None) or (self.num_chord_dic is None):
             num_chord_dic = {}
             chord_num_dic = {}
             num = 0
-            for chord_type in structure_chord_dic.keys():
-                for tonic_type in structure_chord_dic[chord_type]:
-                    for chord in structure_chord_dic[chord_type][tonic_type]:
-                        chord_num_dic[chord] = num
-                        num_chord_dic[num] = chord
-                        num += 1
+            for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦
+                for tonic_type in structure_chord_dic[chord_type]:  # 大小调
+                    for chord in structure_chord_dic[chord_type][tonic_type].values():
+                        for pos in chord.values():  # 转位
+                            try:
+                                chord_num_dic[pos]
+                            except KeyError:
+                                chord_num_dic[pos] = num
+                                num_chord_dic[num] = pos
+                                num += 1
             self.num_chord_dic = num_chord_dic
             self.chord_num_dic = chord_num_dic
             with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'wb') as f:
