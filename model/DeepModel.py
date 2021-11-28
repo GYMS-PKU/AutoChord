@@ -202,18 +202,18 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                 print('epoch {} testing'.format(epoch))
             if test_data is not None:
                 loss = 0
-                model.eval()
-                for sample in test_data:
-                    a = sample[0].unsqueeze(0).to(device)
-                    b = sample[1].unsqueeze(0).to(device)
-                    c = sample[2].unsqueeze(0).to(device)
-                    out = model(a, b, c)
-                    loss += F.nll_loss(out, sample[3].unsqueeze(0).to(device))
+                with torch.no_grad():
+                    for sample in test_data:
+                        a = sample[0].unsqueeze(0).to(device)
+                        b = sample[1].unsqueeze(0).to(device)
+                        c = sample[2].unsqueeze(0).to(device)
+                        out = model(a, b, c)
+                        loss += F.nll_loss(out, sample[3].unsqueeze(0).to(device))
 
-                loss /= len(test_data)
-                test_loss.append(loss)
-                if verbose:
-                    print('test loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
+                    loss /= len(test_data)
+                    test_loss.append(loss)
+                    if verbose:
+                        print('test loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
 
     def predict(self, chord, melody, x, single=True):
         """
@@ -243,8 +243,22 @@ class MyMarkovChain(MyDeepModel):
         super(MyMarkovChain, self).__init__()
         self.transition_matrix = None
 
-    def fit(self, train_data, test_data=None):
-        pass
+    def fit(self, train_data):  # 用训练数据生成转移概率矩阵
+        """
+        :param train_data: 训练数据
+        :return:
+        """
+        transition_matrix = np.zeros((train_data[0][0].shape[1], train_data[0][0].shape[1]))
+        for sample in train_data:
+            i = np.argsort(sample[0][-1].numpy())[-1]  # 最后一步的和弦编号
+            transition_matrix[i, sample[3][0]] += 1
+        for i in range(transition_matrix.shape[0]):
+            transition_matrix[i] = transition_matrix[i] / np.sum(transition_matrix[i])
+        self.transition_matrix = transition_matrix
 
-    def predict(self, chord, melody, x):
-        pass
+    def predict(self, chord_index):
+        """
+        :param chord_index: 和弦编号
+        :return:
+        """
+        return self.transition_matrix[chord_index]
