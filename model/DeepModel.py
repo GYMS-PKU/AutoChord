@@ -35,6 +35,39 @@ class MyLoss(nn.Module):
         return F.nll_loss(predict_chord[mask], chord[mask])
 
 
+class ChordNNNet(nn.Module):  # 根据当前chord和melody预测下一个chord的分类
+    def __init__(self, chord_num=42, melody_keys=12, alpha=0.2, device='cpu'):
+        """
+        :param chord_num: 和弦个数
+        :param melody_keys: 旋律表示的维度
+        :param alpha: LeakyRelu参数
+        :param device:
+        """
+        super(ChordNNNet, self).__init__()
+        self.device = device
+        self.melody_keys = melody_keys  # melody_keys设置为12，也就是12个维度来表征一个曲子
+        self.chord_num = chord_num  # chord_num是使用one_hot编码的和弦数量
+        self.leakyrelu = nn.LeakyReLU(alpha)
+        self.Dense1 = nn.Linear(self.chord_num + self.melody_keys * 2,
+                                self.chord_num * 2)
+        self.Dense2 = nn.Linear(self.chord_num * 2, self.chord_num * 2)
+        self.Dense3 = nn.Linear(self.chord_num * 2, self.chord_num)
+
+    def forward(self, chord, melody, x):
+        """
+        :param chord: chord序列，batch_size * seq_length * chord_num
+        :param melody: melody序列，batch_size * seq_length * melody_keys
+        :param x: 下一个melody，batch_size * melody_keys
+        :return: 下一个chord的分类概率
+        """
+        ipt = torch.cat([chord[:, -1, :], melody[:, -1, :], x], dim=-1)
+        # 得到batch_size * (chord_num + melody_keys * 2)
+        y = self.leakyrelu(self.Dense1(ipt))
+        y = self.leakyrelu(self.Dense2(y))
+        y = self.Dense3(y)
+        return F.log_softmax(y, dim=1)
+
+
 class ChordLstmNet(nn.Module):  # 根据时序chord和melody预测下一个chord的分类
     def __init__(self, chord_num=42, melody_keys=12, hidden_size=128, num_layers=2, bidirectional=False,
                  alpha=0.2, device='cpu'):
