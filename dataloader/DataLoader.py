@@ -22,6 +22,8 @@
 -- 更新：chord_dic改为chord_num_dic和num_chord_dic，整合在get_structure_chord_dic中
 -- 更新：get_train_data方法更改，默认生成为单向lstm准备的训练数据，使用valid_double_compressed_data，形式为tuple
 -- 更新：新增valid_double_compressed_data，需要筛选出structure_chord_dic中收录的部分
+2021-12-01
+-- 更新：需要生成global_num_chord_dic和global_chord_num_dic，并且保证structure_chord_dic中的数字编号和其一致
 """
 
 import numpy as np
@@ -65,26 +67,36 @@ class DataLoader:
             self.train_data = None
 
         # 读取chord_num_dic和num_chord_dic，注意这里是tuple表示
-        if 'chord_num_dic.pkl' in os.listdir(self.processed_data_path):
-            print('reading chord_num_dic')
+        if 'global_chord_num_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading global_chord_num_dic')
             try:
-                with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'rb') as f:
-                    self.chord_num_dic = pickle.load(f)
+                with open('{}/global_chord_num_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.global_chord_num_dic = pickle.load(f)
             except EOFError:
-                print('chord_num_dic not found!')
-                self.chord_num_dic = None
+                print('global_chord_num_dic not found!')
+                self.global_chord_num_dic = None
         else:
-            self.chord_num_dic = None
-        if 'num_chord_dic.pkl' in os.listdir(self.processed_data_path):
-            print('reading num_chord_dic')
+            self.global_chord_num_dic = None
+        if 'global_num_chord_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading global_num_chord_dic')
             try:
-                with open('{}/num_chord_dic.pkl'.format(self.processed_data_path), 'rb') as f:
-                    self.num_chord_dic = pickle.load(f)
+                with open('{}/global_num_chord_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.global_num_chord_dic = pickle.load(f)
             except EOFError:
-                print('num_chord_dic not found!')
-                self.num_chord_dic = None
+                print('global_num_chord_dic not found!')
+                self.global_num_chord_dic = None
         else:
-            self.num_chord_dic = None
+            self.global_num_chord_dic = None
+        if 'global_num_chord_one_hot_dic.pkl' in os.listdir(self.processed_data_path):
+            print('reading global_num_chord_one_hot_dic')
+            try:
+                with open('{}/global_num_chord_one_hot_dic.pkl'.format(self.processed_data_path), 'rb') as f:
+                    self.global_num_chord_one_hot_dic = pickle.load(f)
+            except EOFError:
+                print('global_num_chord_one_hot_dic not found!')
+                self.global_num_chord_one_hot_dic = None
+        else:
+            self.global_num_chord_one_hot_dic = None
 
         # 读取二次压缩数据，其中和弦用tuple表示
         if 'double_compressed_data.pkl' in os.listdir(self.processed_data_path):
@@ -230,10 +242,11 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self, min_length=1, write_cache=False, valid_compressed_data=None):
+    def get_train_data(self, min_length=1, m='major', write_cache=False, valid_compressed_data=None):
         # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
         :param min_length: 最小训练长度，1意味着最短的形式是一个和弦，加两个melody，预测一个chord
+        :param: m: 大小调
         :param write_cache: 是否写缓存
         :param valid_compressed_data: 传入保证是三和弦的sample
         :return:
@@ -253,15 +266,15 @@ class DataLoader:
                 continue
 
             melody_mat = np.zeros((len(melody), 12))
-            chord_mat = np.zeros((len(chord), len(self.chord_num_dic)))
+            chord_mat = np.zeros((len(chord), len(self.global_chord_num_dic[m])))
             for i in range(len(melody)):  # 生成one_hot矩阵
                 melody_mat[i, melody[i]] = 1
-                chord_mat[i][self.chord_num_dic[chord[i]]] = 1
+                chord_mat[i][self.global_chord_num_dic[m][chord[i]]] = 1
             melody_mat = torch.Tensor(melody_mat)
             chord_mat = torch.Tensor(chord_mat)
             for j in range(min_length, len(melody)-1):
                 train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1],
-                                   torch.tensor(self.chord_num_dic[chord[j+1]])))
+                                   torch.tensor(self.global_chord_num_dic[m][chord[j+1]])))
                 n += 1
                 if n % 10000 == 0:
                     print('{} valid train_data'.format(n))
@@ -314,12 +327,13 @@ class DataLoader:
         structure_chord_dic['triad']['minor'] = minor_triad_structure_chord_dic
 
         # 七和弦
-        # structure_chord_dic['triad']['major'] = major_seventh_structure_chord_dic
-        # structure_chord_dic['triad']['minor'] = minor_seventh_structure_chord_dic
+        structure_chord_dic['seventh']['major'] = major_seventh_structure_chord_dic
+        structure_chord_dic['seventh']['minor'] = minor_seventh_structure_chord_dic
 
-        # 生成chord_num_dic和num_chord_dic，需要分成自然大小调
         self.structure_chord_dic = structure_chord_dic
-        if (self.chord_num_dic is None) or (self.num_chord_dic is None):
+
+        # 生成global_chord_num_dic和global_num_chord_dic，需要分成自然大小调
+        if (self.global_chord_num_dic is None) or (self.global_num_chord_dic is None):
             # num_chord_dic和chord_num_dic都分成大小调两个字典
             num_chord_dic = {'major': {}, 'minor': {}}
             chord_num_dic = {'major': {}, 'minor': {}}
@@ -327,22 +341,32 @@ class DataLoader:
             minor_num = 0
             for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦，当前仅三和弦
                 for tonic_type in structure_chord_dic[chord_type]:  # 大小调
-                    for chord in structure_chord_dic[chord_type][tonic_type].values():
+                    for chord in structure_chord_dic[chord_type][tonic_type].items():
                         for pos in chord.values():  # 转位
                             try:
-                                chord_num_dic[tonic_type][pos]
+                                global_chord_num_dic[tonic_type][pos]
                             except KeyError:
                                 if tonic_type == 'major':
-                                    chord_num_dic[tonic_type][pos] = major_num
-                                    num_chord_dic[tonic_type][major_num] = pos
+                                    global_chord_num_dic[tonic_type][pos] = major_num
+                                    global_num_chord_dic[tonic_type][major_num] = pos
                                     major_num += 1
                                 else:
-                                    chord_num_dic[tonic_type][pos] = minor_num
-                                    num_chord_dic[tonic_type][minor_num] = pos
+                                    global_chord_num_dic[tonic_type][pos] = minor_num
+                                    global_num_chord_dic[tonic_type][minor_num] = pos
                                     minor_num += 1
-            self.num_chord_dic = num_chord_dic
-            self.chord_num_dic = chord_num_dic
-            with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'wb') as f:
-                pickle.dump(chord_num_dic, f)
-            with open('{}/num_chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
-                pickle.dump(num_chord_dic, f)
+            self.global_num_chord_dic = global_num_chord_dic
+            self.global_chord_num_dic = global_chord_num_dic
+            global_num_chord_one_hot_dic = {'major': {}, 'minor': {}}
+            for m in ['major', 'minor']:
+                for num, chord in self.global_num_chord_dic[m]:
+                    tmp = np.zeros(len(self.global_num_chord_dic[m]))
+                    tmp[num] = 1
+                    global_num_chord_one_hot_dic[m][num] = tmp
+            self.global_num_chord_one_hot_dic = global_num_chord_one_hot_dic
+
+            with open('{}/global_chord_num_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(global_chord_num_dic, f)
+            with open('{}/global_num_chord_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(global_num_chord_dic, f)
+            with open('{}/global_num_chord_one_hot_dic.pkl'.format(self.processed_data_path), 'wb') as f:
+                pickle.dump(global_num_chord_one_hot_dic, f)
