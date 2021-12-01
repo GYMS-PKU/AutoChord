@@ -71,10 +71,10 @@ class ChordGenerator:
                     if t == 0:  # 初始第一个和弦不用检查
                         feasible_chords.append(i)
                     else:
-                        if self.rule.check_rules(self.chord_dic[chords[t-1]], tmp_chord):
+                        if self.rule.check_rules(self.chord_dic[chords[t-1]], tmp_chord, melody[t-1], melody[t]):
                             # 自定义的规则都检查通过后才能进入可行集
                             feasible_chords.append(i)
-
+                print(feasible_chords)
                 if not feasible_chords:  # 如果没有可行的和弦，就依次往前回溯。注意此时feasible_chords_record的长度仍然是t
                     t -= 1
                     while len(feasible_chords_record[t]) == 1:  # 表明上一步只有一个可行集，则需要进一步回溯
@@ -108,5 +108,6 @@ class ChordGenerator:
                         tmp_chord = np.random.choice(feasible_chords_record[-1])
                     chords[t] = tmp_chord
                     t += 1
+                    print(tmp_chord)
                     continue
             return chords
