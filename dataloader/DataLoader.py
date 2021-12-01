@@ -30,6 +30,10 @@ import pypianoroll as pr
 import xml.etree.ElementTree as et
 import os
 import torch
+
+import sys
+sys.path.append('.')
+from .chord_dic import *
 from time import time
 
 
@@ -47,6 +51,7 @@ class DataLoader:
             processed_data_path = 'E:/Documents/学习资料/AutoChord/datasets/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
+        self.chord_name_dic = chord_name_dic
 
         if 'processed_data' not in os.listdir(self.raw_data_path):
             os.makedirs('E:/Documents/学习资料/AutoChord/datasets/processed_data')
@@ -305,79 +310,36 @@ class DataLoader:
                                'ninth': {'major': {}, 'minor': {}}}  # 三和弦、七和弦、九和弦
 
         # 三和弦
-        major_structure_chord_dic = {i: {} for i in range(1, 8)}  # 大调
-        minor_structure_chord_dic = {i: {} for i in range(1, 8)}  # 小调
-
-        major_structure_chord_dic[1] = {1: (0, 4, 7), 2: (4, 7, 0), 3: (7, 0, 4)}
-        minor_structure_chord_dic[1] = {1: (0, 3, 7), 2: (3, 7, 0), 3: (7, 0, 3)}
-
-        major_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
-        minor_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
-
-        major_structure_chord_dic[3] = {1: (4, 7, 11), 2: (7, 11, 4), 3: (11, 4, 7)}
-        minor_structure_chord_dic[3] = {1: (3, 7, 10), 2: (7, 10, 3), 3: (10, 3, 7)}
-
-        major_structure_chord_dic[4] = {1: (5, 9, 0), 2: (9, 0, 5), 3: (0, 5, 9)}
-        minor_structure_chord_dic[4] = {1: (5, 8, 0), 2: (8, 0, 5), 3: (0, 5, 8)}
-
-        major_structure_chord_dic[5] = {1: (7, 11, 2), 2: (11, 2, 7), 3: (2, 7, 11)}
-        minor_structure_chord_dic[5] = {1: (7, 10, 2), 2: (10, 2, 7), 3: (2, 7, 10)}
-
-        major_structure_chord_dic[6] = {1: (9, 0, 4), 2: (0, 4, 9), 3: (4, 9, 0)}
-        minor_structure_chord_dic[6] = {1: (8, 0, 3), 2: (0, 3, 8), 3: (3, 8, 0)}
-
-        major_structure_chord_dic[7] = {1: (11, 2, 5), 2: (2, 5, 11), 3: (5, 11, 2)}
-        minor_structure_chord_dic[7] = {1: (10, 2, 5), 2: (2, 5, 10), 3: (5, 10, 2)}
-
-        structure_chord_dic['triad']['major'] = major_structure_chord_dic
-        structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
+        structure_chord_dic['triad']['major'] = major_triad_structure_chord_dic
+        structure_chord_dic['triad']['minor'] = minor_triad_structure_chord_dic
 
         # 七和弦
-        """
-        major_structure_chord_dic = {i: {} for i in range(1, 8)}  # 大调
-        minor_structure_chord_dic = {i: {} for i in range(1, 8)}  # 小调
+        # structure_chord_dic['triad']['major'] = major_seventh_structure_chord_dic
+        # structure_chord_dic['triad']['minor'] = minor_seventh_structure_chord_dic
 
-        major_structure_chord_dic[1] = {1: (0, 4, 7), 2: (4, 7, 0), 3: (7, 0, 4)}
-        minor_structure_chord_dic[1] = {1: (0, 3, 7), 2: (3, 7, 0), 3: (7, 0, 3)}
-
-        major_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
-        minor_structure_chord_dic[2] = {1: (2, 5, 9), 2: (5, 9, 2), 3: (9, 2, 5)}
-
-        major_structure_chord_dic[3] = {1: (4, 7, 11), 2: (7, 11, 4), 3: (11, 4, 7)}
-        minor_structure_chord_dic[3] = {1: (3, 7, 10), 2: (7, 10, 3), 3: (10, 3, 7)}
-
-        major_structure_chord_dic[4] = {1: (5, 9, 0), 2: (9, 0, 5), 3: (0, 5, 9)}
-        minor_structure_chord_dic[4] = {1: (5, 8, 0), 2: (8, 0, 5), 3: (0, 5, 8)}
-
-        major_structure_chord_dic[5] = {1: (7, 11, 2), 2: (11, 2, 7), 3: (2, 7, 11)}
-        minor_structure_chord_dic[5] = {1: (7, 10, 2), 2: (10, 2, 7), 3: (2, 7, 10)}
-
-        major_structure_chord_dic[6] = {1: (9, 0, 4), 2: (0, 4, 9), 3: (4, 9, 0)}
-        minor_structure_chord_dic[6] = {1: (8, 0, 3), 2: (0, 3, 8), 3: (3, 8, 0)}
-
-        major_structure_chord_dic[7] = {1: (11, 2, 5), 2: (2, 5, 11), 3: (5, 11, 2)}
-        minor_structure_chord_dic[7] = {1: (10, 2, 5), 2: (2, 5, 10), 3: (5, 10, 2)}
-
-        structure_chord_dic['triad']['major'] = major_structure_chord_dic
-        structure_chord_dic['triad']['minor'] = minor_structure_chord_dic
-        """
-
-        # 生成chord_num_dic和num_chord_dic
+        # 生成chord_num_dic和num_chord_dic，需要分成自然大小调
         self.structure_chord_dic = structure_chord_dic
         if (self.chord_num_dic is None) or (self.num_chord_dic is None):
-            num_chord_dic = {}
-            chord_num_dic = {}
-            num = 0
-            for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦
+            # num_chord_dic和chord_num_dic都分成大小调两个字典
+            num_chord_dic = {'major': {}, 'minor': {}}
+            chord_num_dic = {'major': {}, 'minor': {}}
+            major_num = 0
+            minor_num = 0
+            for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦，当前仅三和弦
                 for tonic_type in structure_chord_dic[chord_type]:  # 大小调
                     for chord in structure_chord_dic[chord_type][tonic_type].values():
                         for pos in chord.values():  # 转位
                             try:
-                                chord_num_dic[pos]
+                                chord_num_dic[tonic_type][pos]
                             except KeyError:
-                                chord_num_dic[pos] = num
-                                num_chord_dic[num] = pos
-                                num += 1
+                                if tonic_type == 'major':
+                                    chord_num_dic[tonic_type][pos] = major_num
+                                    num_chord_dic[tonic_type][major_num] = pos
+                                    major_num += 1
+                                else:
+                                    chord_num_dic[tonic_type][pos] = minor_num
+                                    num_chord_dic[tonic_type][minor_num] = pos
+                                    minor_num += 1
             self.num_chord_dic = num_chord_dic
             self.chord_num_dic = chord_num_dic
             with open('{}/chord_num_dic.pkl'.format(self.processed_data_path), 'wb') as f:
