@@ -38,14 +38,14 @@ minor_triad_structure_chord_dic[7] = {1: (10, 2, 5), 2: (2, 5, 10), 3: (5, 10, 2
 major_seventh_structure_chord_dic = {i: {} for i in range(1, 8)}  # 大调
 minor_seventh_structure_chord_dic = {i: {} for i in range(1, 8)}  # 小调
 
-major_seventh_structure_chord_dic[1] = {1: (0, 4, 7, 11), 2: (4, 7, 0, 11), 3: (7, 0, 11, 4), 4: (0, 11, 4, 7)}
-minor_seventh_structure_chord_dic[1] = {1: (0, 3, 7, 10), 2: (3, 7, 0, 10), 3: (7, 0, 10, 3), 4: (0, 10, 3, 7)}
+major_seventh_structure_chord_dic[1] = {1: (0, 4, 7, 11), 2: (4, 7, 11, 0), 3: (7, 11, 0, 4), 4: (4, 7, 11, 0)}
+minor_seventh_structure_chord_dic[1] = {1: (0, 3, 7, 10), 2: (3, 7, 10, 0), 3: (7, 10, 0, 3), 4: (3, 7, 10, 0)}
 
 major_seventh_structure_chord_dic[2] = {1: (2, 5, 9, 0), 2: (5, 9, 0, 2), 3: (9, 0, 2, 5), 4: (0, 2, 5, 9)}
 minor_seventh_structure_chord_dic[2] = {1: (2, 5, 8, 0), 2: (5, 8, 0, 2), 3: (8, 0, 2, 5), 4: (0, 2, 5, 8)}
 
 major_seventh_structure_chord_dic[3] = {1: (4, 7, 11, 2), 2: (7, 11, 2, 4), 3: (11, 2, 4, 7), 4: (2, 4, 7, 11)}
-minor_seventh_structure_chord_dic[3] = {1: (3, 7, 10, 2), 2: (7, 10, 2, 3), 3: (10, 2, 3, 7), 4: (2, 3, 7, 11)}
+minor_seventh_structure_chord_dic[3] = {1: (3, 7, 10, 2), 2: (7, 10, 2, 3), 3: (10, 2, 3, 7), 4: (2, 3, 7, 10)}
 
 major_seventh_structure_chord_dic[4] = {1: (5, 9, 0, 4), 2: (9, 0, 4, 5), 3: (0, 4, 5, 9), 4: (4, 5, 9, 0)}
 minor_seventh_structure_chord_dic[4] = {1: (5, 8, 0, 3), 2: (8, 0, 3, 5), 3: (0, 3, 5, 8), 4: (3, 5, 8, 0)}
@@ -54,7 +54,7 @@ major_seventh_structure_chord_dic[5] = {1: (7, 11, 2, 5), 2: (11, 2, 5, 7), 3: (
 minor_seventh_structure_chord_dic[5] = {1: (7, 10, 2, 5), 2: (10, 2, 5, 7), 3: (2, 5, 7, 10), 4: (5, 7, 10, 2)}
 
 major_seventh_structure_chord_dic[6] = {1: (9, 0, 4, 7), 2: (0, 4, 7, 9), 3: (4, 7, 9, 0), 4: (7, 9, 0, 4)}
-minor_seventh_structure_chord_dic[6] = {1: (8, 0, 3, 7), 2: (0, 3, 8, 9), 3: (3, 7, 8, 0), 4: (7, 8, 0, 3)}
+minor_seventh_structure_chord_dic[6] = {1: (8, 0, 3, 7), 2: (0, 3, 7, 8), 3: (3, 7, 8, 0), 4: (7, 8, 0, 3)}
 
 major_seventh_structure_chord_dic[7] = {1: (11, 2, 5, 9), 2: (2, 5, 9, 11), 3: (5, 9, 11, 2), 4: (9, 11, 2, 5)}
 minor_seventh_structure_chord_dic[7] = {1: (10, 2, 5, 8), 2: (2, 5, 8, 10), 3: (5, 8, 10, 2), 4: (8, 10, 2, 5)}
@@ -65,7 +65,7 @@ chord_name_dic = {
     (0, 4, 7): 'T', (4, 7, 0): 'T_6', (7, 0, 4): 'T_46',
     (0, 3, 7): 't', (3, 7, 0): 't_6', (7, 0, 3): 't_46',
     (2, 5, 9): 'SII', (5, 9, 2): 'SII_6', (9, 2, 5): 'SII_46',
-    (2, 5, 9): 'sII', (5, 9, 2): 'sII_6', (9, 2, 5): 'sII_46',
+    (2, 5, 8): 'sII', (5, 8, 2): 'sII_6', (8, 2, 5): 'sII_46',
     (4, 7, 11): 'DTIII', (7, 11, 4): 'DTIII_6', (11, 4, 7): 'DTIII_46',
     (3, 7, 10): 'dtIII', (7, 10, 3): 'dtIII_6', (10, 3, 7): 'dtIII_46',
     (5, 9, 0): 'S', (9, 0, 5): 'S_6', (0, 5, 9): 'S_46',

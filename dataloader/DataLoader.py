@@ -50,7 +50,7 @@ class DataLoader:
             raw_data_path = '../dataset'
         self.raw_data_path = raw_data_path
         if processed_data_path is None:
-            processed_data_path = '../dataset'
+            processed_data_path = '../dataset/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
         self.chord_name_dic = chord_name_dic
@@ -335,13 +335,13 @@ class DataLoader:
         # 生成global_chord_num_dic和global_num_chord_dic，需要分成自然大小调
         if (self.global_chord_num_dic is None) or (self.global_num_chord_dic is None):
             # num_chord_dic和chord_num_dic都分成大小调两个字典
-            num_chord_dic = {'major': {}, 'minor': {}}
-            chord_num_dic = {'major': {}, 'minor': {}}
+            global_num_chord_dic = {'major': {}, 'minor': {}}
+            global_chord_num_dic = {'major': {}, 'minor': {}}
             major_num = 0
             minor_num = 0
-            for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦，当前仅三和弦
+            for chord_type in structure_chord_dic.keys():  # 三和弦，七和弦，九和弦，当前仅三和弦和七和弦
                 for tonic_type in structure_chord_dic[chord_type]:  # 大小调
-                    for chord in structure_chord_dic[chord_type][tonic_type].items():
+                    for chord in structure_chord_dic[chord_type][tonic_type].values():
                         for pos in chord.values():  # 转位
                             try:
                                 global_chord_num_dic[tonic_type][pos]
@@ -358,7 +358,7 @@ class DataLoader:
             self.global_chord_num_dic = global_chord_num_dic
             global_num_chord_one_hot_dic = {'major': {}, 'minor': {}}
             for m in ['major', 'minor']:
-                for num, chord in self.global_num_chord_dic[m]:
+                for num, chord in self.global_num_chord_dic[m].items():
                     tmp = np.zeros(len(self.global_num_chord_dic[m]))
                     tmp[num] = 1
                     global_num_chord_one_hot_dic[m][num] = tmp
