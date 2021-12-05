@@ -4,6 +4,9 @@
 """
 该代码定义AutoChord类，该类集成所有生成和弦的方法
 
+日志
+2021-12-05
+-- 新增整合的模型训练
 """
 
 
@@ -23,16 +26,44 @@ class AutoChord:
         :param device: 设备
         """
         if raw_data_path is None:
-            raw_data_path = 'E:/Documents/学习资料/AutoChord/datasets'
+            raw_data_path = '../dataset'
         self.raw_data_path = raw_data_path
         if processed_data_path is None:
-            processed_data_path = 'E:/Documents/学习资料/AutoChord/datasets/processed_data'
+            processed_data_path = '../dataset/processed_data'
         self.processed_data_path = processed_data_path
         self.device = device
 
         self.dataloader = DataLoader(raw_data_path=raw_data_path, processed_data_path=processed_data_path,
                                      device=device)
         self.ChordGenerator = ChordGenerator()
+
+        self.model = None
+
+    def get_model(self, model_name=None, params=None):
+        """
+        :param model_name: 模型名字
+        :param params: 参数
+        :return:
+        """
+        if model_name is None:
+            model_name = 'lstm'
+        if model_name == 'lstm':
+            if params is None:
+                params = {'chord_num': 48, 'device': 'cpu'}
+                self.model = MyChordLstmNet(chord_name=params['chord_num'], device=params['device'])
+
+    def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True, shuffle=True):
+        """
+        :param train_data: list[tuple]，训练集合
+        :param test_data: list[tuple]，测试集合
+        :param epochs:
+        :param batch_size:
+        :param verbose:
+        :param shuffle:
+        :return:
+        """
+        self.model.fit(train_data=train_data, test_data=test_data, epochs=10,
+                       batch_size=batch_size, verbose=verbose, shuffle=shuffle)
 
     def generate(self, melody, method='back'):  # 给定旋律生成chord
         """

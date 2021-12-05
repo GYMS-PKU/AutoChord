@@ -20,6 +20,8 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.autograd import Variable
 from time import time
 
+import random
+
 
 class MyLoss(nn.Module):
     def __init__(self):
@@ -193,13 +195,14 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                                   alpha=alpha, device=device).to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-3)
 
-    def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True):
+    def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True, shuffle=True):
         """
         :param train_data: # 训练数据，为了统一对外接口，考虑到需要用到单一旋律预测，因此格式需要在内部自行处理
         :param test_data:
         :param epochs:
         :param batch_size:
         :param verbose:
+        :param shuffle:
         :return:
         """
 
@@ -211,6 +214,8 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                       sample[2].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
                      for sample in test_data]
         for epoch in range(epochs):
+            if shuffle:  # 乱序
+                random.shuffle(train_data)
             num = 0
             loss = 0
             t = time()

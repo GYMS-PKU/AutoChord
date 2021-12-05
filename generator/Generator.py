@@ -17,7 +17,9 @@
 import numpy as np
 import sys
 sys.path.append('../rule')
+sys.path.append('../model')
 from Rule import Rule
+from DeepModel import *
 
 
 class ChordGenerator:
