@@ -177,7 +177,7 @@ class MyDeepModel:  #
         self.bidirectional = bidirectional
         self.alpha = alpha
         if loss == 'ts':
-            self.loss = F.nll_loss()
+            self.loss = F.nll_loss
         elif loss == 'mask':
             self.loss = MyLoss()
         else:
@@ -186,7 +186,7 @@ class MyDeepModel:  #
 
 class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
     def __init__(self, chord_num=42, melody_keys=12, hidden_size=128, num_layers=2, bidirectional=False,
-                 alpha=0.2, device='cpu'):
+                 alpha=0.2, device='cpu', loss='ts'):
         super(MyChordLstmNet, self).__init__(chord_num=chord_num, melody_keys=melody_keys, hidden_size=hidden_size,
                                              num_layers=num_layers, bidirectional=bidirectional,
                                              alpha=alpha, device=device, loss=loss)
@@ -213,6 +213,9 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
         test_data = [(sample[0].unsqueeze(0).to(self.device), sample[1].unsqueeze(0).to(self.device),
                       sample[2].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
                      for sample in test_data]
+
+        train_loss = []
+        test_loss = []
         for epoch in range(epochs):
             if shuffle:  # 乱序
                 random.shuffle(train_data)
@@ -222,8 +225,8 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
             self.model.train()
             for sample in train_data:
                 if num < batch_size:
-                    out = model(sample[0], sample[1], sample[2])
-                    loss += F.nll_loss(out, sample[3])
+                    out = self.model(sample[0], sample[1], sample[2])
+                    loss += self.loss(out, sample[3])
                     num += 1
                 else:
                     num = 0
@@ -233,8 +236,8 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                     train_loss.append(loss)
                     loss.backward()
                     loss = 0
-                    optimizer.step()
-                    optimizer.zero_grad()
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
                     t = time()
             if verbose:
                 print('epoch {} testing'.format(epoch))
@@ -242,16 +245,17 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                 loss = 0
                 with torch.no_grad():
                     for sample in test_data:
-                        a = sample[0].unsqueeze(0).to(device)
-                        b = sample[1].unsqueeze(0).to(device)
-                        c = sample[2].unsqueeze(0).to(device)
-                        out = model(a, b, c)
-                        loss += F.nll_loss(out, sample[3].unsqueeze(0).to(device))
+                        a = sample[0]
+                        b = sample[1]
+                        c = sample[2]
+                        out = self.model(a, b, c)
+                        loss += self.loss(out, sample[3].unsqueeze(0).to(device))
 
                     loss /= len(test_data)
                     test_loss.append(loss)
                     if verbose:
                         print('test loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
+            return train_loss, test_loss
 
     def predict(self, chord, melody, x, single=True):
         """

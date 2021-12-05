@@ -15,7 +15,8 @@ sys.path.append('../dataloader')
 sys.path.append('../generator')
 sys.path.append('../model')
 from DataLoader import DataLoader
-from ChordGenerator import ChordGenerator
+from generator import Generator
+from DeepModel import *
 
 
 class AutoChord:
@@ -35,7 +36,9 @@ class AutoChord:
 
         self.dataloader = DataLoader(raw_data_path=raw_data_path, processed_data_path=processed_data_path,
                                      device=device)
-        self.ChordGenerator = ChordGenerator()
+        self.generator = Generator.ChordGenerator(global_num_chord_dic=self.dataloader.global_num_chord_dic,
+                                                  global_num_chord_dic_one_hot=
+                                                  self.dataloader.global_num_chord_one_hot_dic)
 
         self.model = None
 
@@ -50,7 +53,7 @@ class AutoChord:
         if model_name == 'lstm':
             if params is None:
                 params = {'chord_num': 48, 'device': 'cpu'}
-                self.model = MyChordLstmNet(chord_name=params['chord_num'], device=params['device'])
+            self.model = MyChordLstmNet(chord_num=params['chord_num'], device=params['device'])
 
     def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True, shuffle=True):
         """
@@ -62,7 +65,7 @@ class AutoChord:
         :param shuffle:
         :return:
         """
-        self.model.fit(train_data=train_data, test_data=test_data, epochs=10,
+        self.model.fit(train_data=train_data, test_data=test_data, epochs=epochs,
                        batch_size=batch_size, verbose=verbose, shuffle=shuffle)
 
     def generate(self, melody, method='back'):  # 给定旋律生成chord

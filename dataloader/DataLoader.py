@@ -34,8 +34,9 @@ import os
 import torch
 
 import sys
-sys.path.append('.')
-from .chord_dic import *
+sys.path.append('C:/Users/Administrator/Desktop/Repositories/AutoChord/dataloader')
+
+from chord_dic import *
 from time import time
 
 
@@ -246,7 +247,7 @@ class DataLoader:
         # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
         :param min_length: 最小训练长度，1意味着最短的形式是一个和弦，加两个melody，预测一个chord
-        :param: m: 大小调
+        :param m: 大小调
         :param write_cache: 是否写缓存
         :param valid_compressed_data: 传入保证是三和弦的sample
         :return:
