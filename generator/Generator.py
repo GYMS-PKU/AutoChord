@@ -51,9 +51,9 @@ class ChordGenerator:
         chords[:] = np.nan  # 先填充缺失值
         chords_one_hot = np.zeros((tt, len(self.global_num_chord_dic)))  # 生成的和弦序列，但是使用one-hot编码，适用于使用NN类方法
 
-        melody_mat = np.zeros((len(melody), 12))  # 生成melody的one-hot表示，适用于NN类方法
+        melody_one_hot = np.zeros((len(melody), 12))  # 生成melody的one-hot表示，适用于NN类方法
         for i in range(len(melody)):
-            melody_mat[i, melody[i]] = 1
+            melody_one_hot[i, melody[i]] = 1
 
         if method in ['back', 'global_markov', 'lstm', 'nn']:
             t = 0
@@ -72,13 +72,13 @@ class ChordGenerator:
                         if method == 'nn':  # 此时仅仅使用虽有最后一个chord，melody和下一个melody
                             # 注意默认使用single模式来predict，因此预测就是一维向量
                             # 由于使用log_softmax，因此输出需要取指数
-                            p = model.predict(chords_one_hot[t-1:t], melody[t-1:t], melody[t:t+1])
+                            p = model.predict(chords_one_hot[t-1:t], melody_one_hot[t-1:t], melody_one_hot[t:t+1])
                             p = np.exp(p)[feasible_chords_record[-1]]
                             p /= np.sum(p)
                             tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
                             chords_one_hot[t] = self.global_num_chord_dic_one_hot[tmp_chord]
                         else:
-                            p = model.predict(chords_one_hot[:t], melody[:t], melody[t:t + 1])
+                            p = model.predict(chords_one_hot[:t], melody_one_hot[:t], melody_one_hot[t])
                             p = np.exp(p)[feasible_chords_record[-1]]
                             p /= np.sum(p)
                             tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
@@ -138,13 +138,13 @@ class ChordGenerator:
                         if method == 'nn':  # 此时仅仅使用虽有最后一个chord，melody和下一个melody
                             # 注意默认使用single模式来predict，因此预测就是一维向量
                             # 由于使用log_softmax，因此输出需要取指数
-                            p = model.predict(chords_one_hot[t-1:t], melody[t-1:t], melody[t:t+1])
+                            p = model.predict(chords_one_hot[t-1:t], melody_one_hot[t-1:t], melody_one_hot[t:t+1])
                             p = np.exp(p)[feasible_chords_record[-1]]
                             p /= np.sum(p)
                             tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)
                             chords_one_hot[t] = self.global_num_chord_dic_one_hot[tmp_chord]
                         else:
-                            p = model.predict(chords_one_hot[:t], melody[:t], melody[t:t + 1])
+                            p = model.predict(chords_one_hot[:t], melody_one_hot[:t], melody_one_hot[t])
                             p = np.exp(p)[feasible_chords_record[-1]]
                             p /= np.sum(p)
                             tmp_chord = np.random.choice(feasible_chords_record[-1], p=p)

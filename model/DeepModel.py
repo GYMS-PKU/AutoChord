@@ -181,7 +181,7 @@ class MyDeepModel:  #
         elif loss == 'mask':
             self.loss = MyLoss()
         else:
-            self.loss = F.nll_loss()
+            self.loss = F.nll_loss
 
 
 class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
@@ -231,13 +231,13 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                 else:
                     num = 0
                     loss /= batch_size
-                    if verbose:
-                        print('loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
-                    train_loss.append(loss)
+                    train_loss.append(float(loss.detach().cpu()))
                     loss.backward()
-                    loss = 0
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+                    if verbose:
+                        print('loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
+                    loss = 0
                     t = time()
             if verbose:
                 print('epoch {} testing'.format(epoch))
@@ -249,35 +249,35 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                         b = sample[1]
                         c = sample[2]
                         out = self.model(a, b, c)
-                        loss += self.loss(out, sample[3].unsqueeze(0).to(device))
+                        loss += self.loss(out, sample[3])
 
                     loss /= len(test_data)
-                    test_loss.append(loss)
+                    test_loss.append(float(loss.detach().cpu()))
                     if verbose:
                         print('test loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
-            return train_loss, test_loss
+        return train_loss, test_loss
 
     def predict(self, chord, melody, x, single=True):
         """
-        :param chord: num * chord_num的二维np.arrray
+        :param chord: num * chord_num的二维np.array
         :param melody: num * key_num的二维np.array
         :param x: key_num的一维melody
         :param single: 是否返回一维概率
         :return:
         """
-        self.model.eval()
-        if len(chord.shape) == 2:
-            out = self.model(torch.tensor(chord).unsqueeze(0).to(self.device),
-                             torch.tensor(melody).unsqueeze(0).to(self.device),
-                             torch.tensor(x).unsqueeze(0).to(self.device))
-        else:
-            out = self.model(torch.tensor(chord).to(self.device),
-                             torch.tensor(melody).to(self.device),
-                             torch.tensor(x).to(self.device))
-        if single:
-            return out[0].cpu().numpy()
-        else:
-            return out.cpu().numpy()
+        with torch.no_grad():
+            if len(chord.shape) == 2:
+                out = self.model(torch.Tensor(chord).unsqueeze(0).to(self.device),
+                                 torch.Tensor(melody).unsqueeze(0).to(self.device),
+                                 torch.Tensor(x).unsqueeze(0).to(self.device))
+            else:
+                out = self.model(torch.Tensor(chord).to(self.device),
+                                 torch.Tensor(melody).to(self.device),
+                                 torch.Tensor(x).to(self.device))
+            if single:
+                return out[0].cpu().numpy()
+            else:
+                return out.cpu().numpy()
 
 
 class MyMarkovChain(MyDeepModel):

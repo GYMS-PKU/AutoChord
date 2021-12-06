@@ -243,11 +243,11 @@ class DataLoader:
         else:
             return None, None
 
-    def get_train_data(self, min_length=1, m='major', write_cache=False, valid_compressed_data=None):
+    def get_train_data(self, min_length=1, tonic='major', write_cache=False, valid_compressed_data=None):
         # 拼接得到用于训练的数据，转为list形式的torch向量存在self.train_data中
         """
         :param min_length: 最小训练长度，1意味着最短的形式是一个和弦，加两个melody，预测一个chord
-        :param m: 大小调
+        :param tonic: 大小调
         :param write_cache: 是否写缓存
         :param valid_compressed_data: 传入保证是三和弦的sample
         :return:
@@ -267,15 +267,15 @@ class DataLoader:
                 continue
 
             melody_mat = np.zeros((len(melody), 12))
-            chord_mat = np.zeros((len(chord), len(self.global_chord_num_dic[m])))
+            chord_mat = np.zeros((len(chord), len(self.global_chord_num_dic[tonic])))
             for i in range(len(melody)):  # 生成one_hot矩阵
                 melody_mat[i, melody[i]] = 1
-                chord_mat[i][self.global_chord_num_dic[m][chord[i]]] = 1
+                chord_mat[i][self.global_chord_num_dic[tonic][chord[i]]] = 1
             melody_mat = torch.Tensor(melody_mat)
             chord_mat = torch.Tensor(chord_mat)
             for j in range(min_length, len(melody)-1):
                 train_data.append((chord_mat[:j], melody_mat[:j], melody_mat[j+1],
-                                   torch.tensor(self.global_chord_num_dic[m][chord[j+1]])))
+                                   torch.tensor(self.global_chord_num_dic[tonic][chord[j+1]])))
                 n += 1
                 if n % 10000 == 0:
                     print('{} valid train_data'.format(n))

@@ -9,8 +9,8 @@
 -- 新增整合的模型训练
 """
 
-
 import sys
+
 sys.path.append('../dataloader')
 sys.path.append('../generator')
 sys.path.append('../model')
@@ -36,9 +36,14 @@ class AutoChord:
 
         self.dataloader = DataLoader(raw_data_path=raw_data_path, processed_data_path=processed_data_path,
                                      device=device)
-        self.generator = Generator.ChordGenerator(global_num_chord_dic=self.dataloader.global_num_chord_dic,
-                                                  global_num_chord_dic_one_hot=
-                                                  self.dataloader.global_num_chord_one_hot_dic)
+        self.generator = {'major': Generator.ChordGenerator(global_num_chord_dic=
+                                                            self.dataloader.global_num_chord_dic['major'],
+                                                            global_num_chord_dic_one_hot=
+                                                            self.dataloader.global_num_chord_one_hot_dic['major']),
+                          'minor': Generator.ChordGenerator(global_num_chord_dic=
+                                                            self.dataloader.global_num_chord_dic['minor'],
+                                                            global_num_chord_dic_one_hot=
+                                                            self.dataloader.global_num_chord_one_hot_dic['minor'])}
 
         self.model = None
 
@@ -65,14 +70,21 @@ class AutoChord:
         :param shuffle:
         :return:
         """
-        self.model.fit(train_data=train_data, test_data=test_data, epochs=epochs,
-                       batch_size=batch_size, verbose=verbose, shuffle=shuffle)
+        train_loss, test_loss = self.model.fit(train_data=train_data, test_data=test_data, epochs=epochs,
+                                               batch_size=batch_size, verbose=verbose, shuffle=shuffle)
+        return train_loss, test_loss
 
-    def generate(self, melody, method='back'):  # 给定旋律生成chord
+    def generate(self, melody, tonic='major', method='back'):  # 给定旋律生成chord
         """
         :param melody: 旋律，array，目前限定成模12，也就是0到11之间，不管八度
+        :param tonic: 调性
         :param method: 生成方法，默认是回溯，可选global_markov，lstm
         :return: 返回根据和弦字典的编号序列
         """
-        return self.ChordGenerator.generate(melody, methods)
-
+        if method == 'back':
+            return self.generator[tonic].generate(melody, method)
+        elif method == 'lstm':
+            if self.model is None:
+                print('no model yet')
+                return
+            return self.generator[tonic].generate(melody, method, model=self.model)
