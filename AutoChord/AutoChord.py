@@ -46,6 +46,7 @@ class AutoChord:
                                                             self.dataloader.global_num_chord_one_hot_dic['minor'])}
 
         self.model = None
+        self.model_name = None
 
     def get_model(self, model_name=None, params=None):
         """
@@ -59,6 +60,13 @@ class AutoChord:
             if params is None:
                 params = {'chord_num': 48, 'device': 'cpu'}
             self.model = MyChordLstmNet(chord_num=params['chord_num'], device=params['device'])
+        elif model_name == 'nn':
+            if params is None:
+                params = {'chord_num': 48, 'device': 'cpu'}
+            self.model = MyChordNNNet(chord_num=params['chord_num'], device=params['device'])
+        elif model_name == 'markov':
+            self.model = MyMarkovChain()
+        self.model_name = model_name
 
     def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True, shuffle=True):
         """
@@ -70,9 +78,12 @@ class AutoChord:
         :param shuffle:
         :return:
         """
-        train_loss, test_loss = self.model.fit(train_data=train_data, test_data=test_data, epochs=epochs,
-                                               batch_size=batch_size, verbose=verbose, shuffle=shuffle)
-        return train_loss, test_loss
+        if self.model_name in ['lstm', 'nn']:
+            train_loss, test_loss = self.model.fit(train_data=train_data, test_data=test_data, epochs=epochs,
+                                                   batch_size=batch_size, verbose=verbose, shuffle=shuffle)
+            return train_loss, test_loss
+        elif self.model_name == 'markov':
+            self.model.fit(train_data=train_data)
 
     def generate(self, melody, tonic='major', method='back'):  # 给定旋律生成chord
         """

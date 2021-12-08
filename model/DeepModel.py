@@ -3,13 +3,15 @@
 """
 该文档定义BiLSTM模型
 
-开发日志
+日志
 2021-11-10
 -- 定义模型
 2021-11-23
 -- 定义Loss，更改模型结构为给定已有melody和chord预测下一个chord
 2021-11-27
 -- 新增模型父类，统一对外接口，给定已有的序列，给出下一个和弦的概率分布
+2021-12.08
+-- 新增MyChordNNNet
 """
 
 import torch
@@ -280,6 +282,101 @@ class MyChordLstmNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
                 return out.cpu().numpy()
 
 
+class MyChordNNNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
+    def __init__(self, chord_num=42, melody_keys=12,
+                 alpha=0.2, device='cpu', loss='ts'):
+        super(MyChordNNNet, self).__init__(chord_num=chord_num, melody_keys=melody_keys,
+                                           alpha=alpha, device=device, loss=loss)
+        self.model = ChordNNNet(chord_num=chord_num, melody_keys=melody_keys,
+                                alpha=alpha, device=device).to(self.device)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-3)
+
+    def fit(self, train_data, test_data=None, epochs=10, batch_size=1000, verbose=True, shuffle=True):
+        """
+        :param train_data: # 训练数据，为了统一对外接口，考虑到需要用到单一旋律预测，因此格式需要在内部自行处理
+        :param test_data:
+        :param epochs:
+        :param batch_size:
+        :param verbose:
+        :param shuffle:
+        :return:
+        """
+
+        # 暂时一次性将所有东西搬到显存中，如果爆了就改成单独进去
+        # train_data中sample带有seq_length维度
+        train_data = [(sample[0][-1].unsqueeze(0).to(self.device), sample[1][-1].unsqueeze(0).to(self.device),
+                       sample[2][-1].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
+                      for sample in train_data]
+        test_data = [(sample[0][1].unsqueeze(0).to(self.device), sample[1][-1].unsqueeze(0).to(self.device),
+                      sample[2][-1].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
+                     for sample in test_data]
+
+        train_loss = []
+        test_loss = []
+        for epoch in range(epochs):
+            if shuffle:  # 乱序
+                random.shuffle(train_data)
+            num = 0
+            loss = 0
+            t = time()
+            self.model.train()
+            for sample in train_data:
+                if num < batch_size:
+                    out = self.model(sample[0], sample[1], sample[2])
+                    loss += self.loss(out, sample[3])
+                    num += 1
+                else:
+                    num = 0
+                    loss /= batch_size
+                    train_loss.append(float(loss.detach().cpu()))
+                    loss.backward()
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    if verbose:
+                        print('loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
+                    loss = 0
+                    t = time()
+            if verbose:
+                print('epoch {} testing'.format(epoch))
+            if test_data is not None:
+                loss = 0
+                with torch.no_grad():
+                    for sample in test_data:
+                        a = sample[0]
+                        b = sample[1]
+                        c = sample[2]
+                        out = self.model(a, b, c)
+                        loss += self.loss(out, sample[3])
+
+                    loss /= len(test_data)
+                    test_loss.append(float(loss.detach().cpu()))
+                    if verbose:
+                        print('test loss: {:.4f} time used: {:.4f}s'.format(loss, time() - t))
+        return train_loss, test_loss
+
+    def predict(self, chord, melody, x, single=True):
+        """
+        :param chord: num * chord_num的二维np.array
+        :param melody: num * key_num的二维np.array
+        :param x: key_num的一维melody
+        :param single: 是否返回一维概率
+        :return:
+        """
+        with torch.no_grad():
+            if len(chord.shape) == 1:
+                out = self.model(torch.Tensor(chord).unsqueeze(0).to(self.device),
+                                 torch.Tensor(melody).unsqueeze(0).to(self.device),
+                                 torch.Tensor(x).unsqueeze(0).to(self.device))
+            else:
+                out = self.model(torch.Tensor(chord).to(self.device),
+                                 torch.Tensor(melody).to(self.device),
+                                 torch.Tensor(x).to(self.device))
+            if single:
+                return out[0].cpu().numpy()
+            else:
+                return out.cpu().numpy()
+
+
 class MyMarkovChain(MyDeepModel):
     def __init__(self):
         super(MyMarkovChain, self).__init__()
@@ -292,9 +389,13 @@ class MyMarkovChain(MyDeepModel):
         """
         transition_matrix = np.zeros((train_data[0][0].shape[1], train_data[0][0].shape[1]))
         for sample in train_data:
-            i = np.argsort(sample[0][-1].numpy())[-1]  # 最后一步的和弦编号
-            transition_matrix[i, sample[3][0]] += 1
+            i = np.argsort(sample[0][-1].numpy())[-1]
+            transition_matrix[i, sample[3].numpy()] += 1
         for i in range(transition_matrix.shape[0]):
+            n = np.sum(transition_matrix[i])
+            if n == 0:
+                transition_matrix[i] = 1 / len(transition_matrix[i])
+                continue
             transition_matrix[i] = transition_matrix[i] / np.sum(transition_matrix[i])
         self.transition_matrix = transition_matrix
 
