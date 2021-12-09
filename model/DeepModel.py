@@ -304,11 +304,11 @@ class MyChordNNNet(MyDeepModel):  # 使用LSTM来预测下一个和弦
 
         # 暂时一次性将所有东西搬到显存中，如果爆了就改成单独进去
         # train_data中sample带有seq_length维度
-        train_data = [(sample[0][-1].unsqueeze(0).to(self.device), sample[1][-1].unsqueeze(0).to(self.device),
-                       sample[2][-1].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
+        train_data = [(sample[0].unsqueeze(0).to(self.device), sample[1].unsqueeze(0).to(self.device),
+                       sample[2].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
                       for sample in train_data]
-        test_data = [(sample[0][1].unsqueeze(0).to(self.device), sample[1][-1].unsqueeze(0).to(self.device),
-                      sample[2][-1].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
+        test_data = [(sample[0].unsqueeze(0).to(self.device), sample[1].unsqueeze(0).to(self.device),
+                      sample[2].unsqueeze(0).to(self.device), sample[3].unsqueeze(0).to(self.device))
                      for sample in test_data]
 
         train_loss = []
