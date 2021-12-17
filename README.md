@@ -1,6 +1,12 @@
 # AutoChord
 
-AutoChord是一个为给定旋律配和弦的项目。
+AutoChord是一个为给定旋律配和弦的项目。具体的问题简介可见**notes**目录下的**notes.md**。
+
+## 结构
+
+#### AutoChord
+
+统一的对外接口，提供数据读取，模型训练
 
 ### 计划表
 
